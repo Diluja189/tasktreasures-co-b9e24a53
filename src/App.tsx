@@ -3,8 +3,25 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import { RoleProvider } from "@/contexts/RoleContext";
+import { AppLayout } from "@/components/layout/AppLayout";
+import Index from "./pages/Index";
+import ProjectsPage from "./pages/ProjectsPage";
+import TasksPage from "./pages/TasksPage";
+import UsersPage from "./pages/UsersPage";
+import DepartmentsPage from "./pages/DepartmentsPage";
+import RolesPage from "./pages/RolesPage";
+import ReportsPage from "./pages/ReportsPage";
+import AuditLogsPage from "./pages/AuditLogsPage";
+import SettingsPage from "./pages/SettingsPage";
+import TeamPage from "./pages/TeamPage";
+import TimelinePage from "./pages/TimelinePage";
+import ApprovalsPage from "./pages/ApprovalsPage";
+import NotificationsPage from "./pages/NotificationsPage";
+import WorkLogPage from "./pages/WorkLogPage";
+import FilesPage from "./pages/FilesPage";
+import FeedbackPage from "./pages/FeedbackPage";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -13,13 +30,31 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <RoleProvider>
+        <BrowserRouter>
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/projects" element={<ProjectsPage />} />
+              <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/users" element={<UsersPage />} />
+              <Route path="/departments" element={<DepartmentsPage />} />
+              <Route path="/roles" element={<RolesPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/audit-logs" element={<AuditLogsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/team" element={<TeamPage />} />
+              <Route path="/timeline" element={<TimelinePage />} />
+              <Route path="/approvals" element={<ApprovalsPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/work-log" element={<WorkLogPage />} />
+              <Route path="/files" element={<FilesPage />} />
+              <Route path="/feedback" element={<FeedbackPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AppLayout>
+        </BrowserRouter>
+      </RoleProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
