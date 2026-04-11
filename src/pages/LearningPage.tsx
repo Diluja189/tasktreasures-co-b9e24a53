@@ -47,7 +47,11 @@ const LearningPage = () => (
         { icon: Award, label: "Certifications", value: "2", change: "2 active", type: "positive" as const },
         { icon: TrendingUp, label: "Skill Score", value: "72%", change: "+5% this quarter", type: "positive" as const },
       ].map((s) => (
-        <StatCard key={s.label} icon={s.icon} title={s.label} value={s.value} change={s.change} changeType={s.type} />
+        <div key={s.label} className="stat-card">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1"><s.icon className="h-3.5 w-3.5" />{s.label}</div>
+          <p className="text-xl font-display font-bold">{s.value}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">{s.change}</p>
+        </div>
       ))}
     </div>
 
