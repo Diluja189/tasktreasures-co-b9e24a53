@@ -21,22 +21,6 @@ import NotificationsPage from "./pages/NotificationsPage";
 import WorkLogPage from "./pages/WorkLogPage";
 import FilesPage from "./pages/FilesPage";
 import FeedbackPage from "./pages/FeedbackPage";
-import CapacityPage from "./pages/CapacityPage";
-import OKRPage from "./pages/OKRPage";
-import AIInsightsPage from "./pages/AIInsightsPage";
-import HeatmapPage from "./pages/HeatmapPage";
-import CompliancePage from "./pages/CompliancePage";
-import SecurityPage from "./pages/SecurityPage";
-import IntegrationsPage from "./pages/IntegrationsPage";
-import NotificationRulesPage from "./pages/NotificationRulesPage";
-import SprintsPage from "./pages/SprintsPage";
-import MilestonesPage from "./pages/MilestonesPage";
-import WorkloadPage from "./pages/WorkloadPage";
-import RisksPage from "./pages/RisksPage";
-import ActivityLogPage from "./pages/ActivityLogPage";
-import ProductivityPage from "./pages/ProductivityPage";
-import LearningPage from "./pages/LearningPage";
-import ActivityFeedPage from "./pages/ActivityFeedPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,22 +50,6 @@ const App = () => (
               <Route path="/work-log" element={<WorkLogPage />} />
               <Route path="/files" element={<FilesPage />} />
               <Route path="/feedback" element={<FeedbackPage />} />
-              <Route path="/capacity" element={<CapacityPage />} />
-              <Route path="/okr" element={<OKRPage />} />
-              <Route path="/ai-insights" element={<AIInsightsPage />} />
-              <Route path="/heatmap" element={<HeatmapPage />} />
-              <Route path="/compliance" element={<CompliancePage />} />
-              <Route path="/security" element={<SecurityPage />} />
-              <Route path="/integrations" element={<IntegrationsPage />} />
-              <Route path="/notification-rules" element={<NotificationRulesPage />} />
-              <Route path="/sprints" element={<SprintsPage />} />
-              <Route path="/milestones" element={<MilestonesPage />} />
-              <Route path="/workload" element={<WorkloadPage />} />
-              <Route path="/risks" element={<RisksPage />} />
-              <Route path="/activity-log" element={<ActivityLogPage />} />
-              <Route path="/productivity" element={<ProductivityPage />} />
-              <Route path="/learning" element={<LearningPage />} />
-              <Route path="/activity-feed" element={<ActivityFeedPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
