@@ -21,6 +21,8 @@ import NotificationsPage from "./pages/NotificationsPage";
 import WorkLogPage from "./pages/WorkLogPage";
 import FilesPage from "./pages/FilesPage";
 import FeedbackPage from "./pages/FeedbackPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,6 +52,8 @@ const App = () => (
               <Route path="/work-log" element={<WorkLogPage />} />
               <Route path="/files" element={<FilesPage />} />
               <Route path="/feedback" element={<FeedbackPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
