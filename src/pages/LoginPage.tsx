@@ -11,6 +11,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<UserRole>("admin");
   const navigate = useNavigate();
   const { setRole } = useRole();
 
@@ -18,12 +19,7 @@ const LoginPage = () => {
     e.preventDefault();
     setLoading(true);
     
-    let detectedRole: UserRole = "admin";
-    if (email.toLowerCase().includes("manager") || email.toLowerCase().includes("sarah")) {
-      detectedRole = "manager";
-    } else if (email.toLowerCase().includes("employee") || email.toLowerCase().includes("james")) {
-      detectedRole = "employee";
-    }
+    const detectedRole: UserRole = selectedRole;
 
     setTimeout(() => {
       setRole(detectedRole);
@@ -56,6 +52,23 @@ const LoginPage = () => {
               <p className="text-slate-400 text-[10px] leading-relaxed">
                 Welcome to management system.
               </p>
+            </div>
+
+            <div className="flex gap-1 mb-6 p-1 bg-slate-100/50 rounded-lg border border-slate-200">
+              {(['admin', 'manager', 'employee'] as UserRole[]).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setSelectedRole(r)}
+                  className={`flex-1 py-1.5 text-[10px] font-bold rounded-md transition-all uppercase tracking-wider ${
+                    selectedRole === r
+                      ? "bg-white text-blue-600 shadow-sm border border-slate-200/50"
+                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
             </div>
 
             <form onSubmit={handleLogin} className="space-y-6">
@@ -107,12 +120,14 @@ const LoginPage = () => {
               </div>
             </form>
 
-            <p className="mt-8 text-center lg:text-left text-slate-400 text-xs">
-              Don't have an account?{" "}
-              <Link to="/register" className="text-blue-600 font-bold hover:underline">
-                Register now
-              </Link>
-            </p>
+            {selectedRole === "admin" && (
+              <p className="mt-8 text-center lg:text-left text-slate-400 text-xs">
+                Don't have an account?{" "}
+                <Link to="/register" className="text-blue-600 font-bold hover:underline">
+                  Register now
+                </Link>
+              </p>
+            )}
           </div>
         </div>
 
