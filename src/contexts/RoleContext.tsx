@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-export type UserRole = "admin" | "manager" | "employee";
+export type UserRole = "admin" | "manager" | "user";
 
 interface User {
   id: string;
@@ -19,7 +19,7 @@ interface RoleContextType {
 const mockUsers: Record<UserRole, User> = {
   admin: { id: "1", name: "Alex Richardson", email: "alex@company.com", role: "admin", department: "Executive" },
   manager: { id: "2", name: "Sarah Chen", email: "sarah@company.com", role: "manager", department: "Engineering" },
-  employee: { id: "3", name: "James Wilson", email: "james@company.com", role: "employee", department: "Engineering" },
+  user: { id: "3", name: "James Wilson", email: "james@company.com", role: "user", department: "Engineering" },
 };
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);

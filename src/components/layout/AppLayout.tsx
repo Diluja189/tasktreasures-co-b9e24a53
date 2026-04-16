@@ -6,11 +6,11 @@ import { Bell, Search, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 
-const roleLabels = { admin: "Administrator", manager: "Manager", employee: "Employee" };
+const roleLabels = { admin: "Administrator", manager: "Manager", user: "Team Member" };
 const roleColors = {
   admin: "bg-destructive/10 text-destructive",
   manager: "bg-primary/10 text-primary",
-  employee: "bg-accent/10 text-accent",
+  user: "bg-accent/10 text-accent",
 };
 
 export function AppLayout({ children }: { children: ReactNode }) {

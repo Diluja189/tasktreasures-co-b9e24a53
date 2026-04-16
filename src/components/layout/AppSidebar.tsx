@@ -12,73 +12,58 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter, SidebarHeader, useSidebar,
 } from "@/components/ui/sidebar";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const navByRole: Record<UserRole, { label: string; items: { title: string; url: string; icon: any }[] }[]> = {
   admin: [
-    { label: "Overview", items: [
+    { label: "Strategic Control", items: [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
+      { title: "Project Lifecycle", url: "/projects", icon: FolderKanban },
+      { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
     ]},
     { label: "Management", items: [
-      { title: "Users", url: "/users", icon: Users },
-      { title: "Departments", url: "/departments", icon: Building2 },
-      { title: "Roles & Permissions", url: "/roles", icon: Shield },
-    ]},
-    { label: "Projects", items: [
-      { title: "All Projects", url: "/projects", icon: FolderKanban },
-      { title: "Reports", url: "/reports", icon: BarChart3 },
+      { title: "Managers & Teams", url: "/users", icon: Users },
+      { title: "System Governance", url: "/roles", icon: Shield },
       { title: "Audit Logs", url: "/audit-logs", icon: FileText },
-    ]},
-    { label: "System", items: [
-      { title: "Settings", url: "/settings", icon: Settings },
     ]},
   ],
   manager: [
-    { label: "Overview", items: [
+    { label: "Execution Control", items: [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
+      { title: "My Projects", url: "/projects", icon: FolderKanban },
+      { title: "Task Management", url: "/tasks", icon: CheckSquare },
     ]},
-    { label: "Project Management", items: [
-      { title: "Projects", url: "/projects", icon: FolderKanban },
-      { title: "Tasks", url: "/tasks", icon: CheckSquare },
-      { title: "Timeline", url: "/timeline", icon: CalendarDays },
-    ]},
-    { label: "Team", items: [
-      { title: "My Team", url: "/team", icon: Users },
+    { label: "Resources", items: [
+      { title: "Team Members", url: "/users", icon: Users },
       { title: "Approvals", url: "/approvals", icon: Star },
-    ]},
-    { label: "Insights", items: [
-      { title: "Reports", url: "/reports", icon: BarChart3 },
-      { title: "Notifications", url: "/notifications", icon: Bell },
+      { title: "Insights", url: "/reports", icon: BarChart3 },
     ]},
   ],
-  employee: [
-    { label: "Overview", items: [
+  user: [
+    { label: "Active Execution", items: [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
-    ]},
-    { label: "Work", items: [
-      { title: "My Projects", url: "/projects", icon: FolderKanban },
       { title: "My Tasks", url: "/tasks", icon: CheckSquare },
-      { title: "Work Log", url: "/work-log", icon: Clock },
+      { title: "Time Tracking", url: "/work-log", icon: Clock },
     ]},
-    { label: "Other", items: [
-      { title: "Files", url: "/files", icon: Upload },
+    { label: "Collaboration", items: [
+      { title: "Project Files", url: "/files", icon: Upload },
       { title: "Feedback", url: "/feedback", icon: MessageSquare },
       { title: "Notifications", url: "/notifications", icon: Bell },
     ]},
   ],
 };
 
-const roleLabels: Record<UserRole, string> = { admin: "Administrator", manager: "Manager", employee: "Employee" };
+const roleLabels: Record<UserRole, string> = { admin: "Administrator", manager: "Manager", user: "Team Member" };
 const roleColors: Record<UserRole, string> = {
   admin: "bg-destructive/20 text-destructive",
   manager: "bg-primary/20 text-primary",
-  employee: "bg-accent/20 text-accent",
+  user: "bg-accent/20 text-accent",
 };
 
 export function AppSidebar() {
-  const { currentUser } = useRole();
+  const { currentUser, setRole } = useRole();
   const { state } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
@@ -157,9 +142,22 @@ export function AppSidebar() {
               {!collapsed && <ChevronDown className="h-3 w-3 text-sidebar-muted" />}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-56 p-1.5">
+          <DropdownMenuContent side="top" align="start" className="w-64 p-2 shadow-2xl border-none rounded-2xl">
+            <div className="px-2 py-1.5 mb-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Switch View Mode</p>
+            </div>
+            <DropdownMenuItem className="gap-2 rounded-lg py-2 cursor-pointer focus:bg-primary/5" onClick={() => setRole("admin")}>
+              <Shield className="h-4 w-4 text-rose-500" /> Admin Access
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2 rounded-lg py-2 cursor-pointer focus:bg-primary/5" onClick={() => setRole("manager")}>
+              <UserCircle className="h-4 w-4 text-indigo-500" /> Manager Access
+            </DropdownMenuItem>
+            <DropdownMenuItem className="gap-2 rounded-lg py-2 cursor-pointer focus:bg-primary/5" onClick={() => setRole("user")}>
+              <Users className="h-4 w-4 text-emerald-500" /> Team Member Access
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="my-2" />
             <DropdownMenuItem 
-              className="gap-2 text-destructive font-medium focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg py-2"
+              className="gap-2 text-destructive font-bold focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg py-2"
               onClick={() => {
                 navigate("/login");
               }}
