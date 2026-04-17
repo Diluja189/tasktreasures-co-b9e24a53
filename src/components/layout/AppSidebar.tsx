@@ -1,7 +1,7 @@
 import {
-  LayoutDashboard, FolderKanban, CheckSquare, Users, Building2, Shield,
-  BarChart3, Clock, FileText, Bell, Settings, ChevronDown, LogOut,
-  UserCircle, CalendarDays, MessageSquare, Upload, Star
+  LayoutDashboard, FolderKanban, CheckSquare, Users, Shield,
+  BarChart3, Clock, FileText, Settings, ChevronDown, LogOut,
+  UserCircle, Eye, UserPlus, Kanban, Bell, LineChart
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useRole, UserRole } from "@/contexts/RoleContext";
@@ -18,39 +18,41 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const navByRole: Record<UserRole, { label: string; items: { title: string; url: string; icon: any }[] }[]> = {
   admin: [
-    { label: "Strategic Control", items: [
+    { label: "Core Operations", items: [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
-      { title: "Project Lifecycle", url: "/projects", icon: FolderKanban },
-      { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
+      { title: "Projects", url: "/projects", icon: FolderKanban },
+      { title: "Assign Manager", url: "/assign-manager", icon: UserPlus },
+      { title: "Project Monitoring", url: "/monitoring", icon: Eye },
     ]},
-    { label: "Management", items: [
-      { title: "Managers & Teams", url: "/users", icon: Users },
-      { title: "System Governance", url: "/roles", icon: Shield },
+    { label: "Human Resources", items: [
+      { title: "Managers", url: "/managers", icon: UserCircle },
+      { title: "Team Members", url: "/users", icon: Users },
+      { title: "Task Overview", url: "/tasks", icon: Kanban },
+    ]},
+    { label: "Intelligence & Compliance", items: [
+      { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
+      { title: "Performance Analysis", url: "/performance", icon: LineChart },
+      { title: "Notifications", url: "/notifications", icon: Bell },
       { title: "Audit Logs", url: "/audit-logs", icon: FileText },
+      { title: "Settings", url: "/settings", icon: Settings },
     ]},
   ],
   manager: [
-    { label: "Execution Control", items: [
+    { label: "Project Execution", items: [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
-      { title: "My Projects", url: "/projects", icon: FolderKanban },
-      { title: "Task Management", url: "/tasks", icon: CheckSquare },
-    ]},
-    { label: "Resources", items: [
-      { title: "Team Members", url: "/users", icon: Users },
-      { title: "Approvals", url: "/approvals", icon: Star },
-      { title: "Insights", url: "/reports", icon: BarChart3 },
+      { title: "My Projects", url: "/manager/projects", icon: FolderKanban },
+      { title: "Task Management", url: "/manager/tasks", icon: CheckSquare },
+      { title: "Team Assignment", url: "/manager/assignments", icon: UserPlus },
+      { title: "Progress Tracking", url: "/manager/tracking", icon: Kanban },
+      { title: "Status Reports", url: "/manager/reports", icon: FileText },
     ]},
   ],
   user: [
-    { label: "Active Execution", items: [
+    { label: "My Work", items: [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
-      { title: "My Tasks", url: "/tasks", icon: CheckSquare },
-      { title: "Time Tracking", url: "/work-log", icon: Clock },
-    ]},
-    { label: "Collaboration", items: [
-      { title: "Project Files", url: "/files", icon: Upload },
-      { title: "Feedback", url: "/feedback", icon: MessageSquare },
-      { title: "Notifications", url: "/notifications", icon: Bell },
+      { title: "My Tasks", url: "/member/tasks", icon: CheckSquare },
+      { title: "Time Tracking", url: "/member/time", icon: Clock },
+      { title: "Task Updates", url: "/member/updates", icon: FileText },
     ]},
   ],
 };

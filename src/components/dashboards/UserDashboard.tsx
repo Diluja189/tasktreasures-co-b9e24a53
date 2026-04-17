@@ -1,197 +1,209 @@
 import { motion } from "framer-motion";
-import { 
-  Play, Pause, CheckCircle2, AlertCircle, 
-  Clock, Calendar, FileText, AlertTriangle,
-  ArrowRight, Timer, PlayCircle, Info, FolderKanban
+import {
+  CheckCircle2, Clock, AlertCircle, Play,
+  ListTodo, Timer, RefreshCw, ChevronRight,
+  Calendar, Target, ArrowUpRight, PenLine
 } from "lucide-react";
-import { 
-  Card, CardContent, CardDescription, CardHeader, CardTitle 
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
-const myTasks = [
-  { 
-    id: 1, 
-    title: "Design System Implementation", 
-    project: "Project Phoenix", 
-    deadline: "2024-05-20", 
-    status: "In Progress", 
-    color: "yellow",
-    progress: 65,
-    estTime: "12h"
-  },
-  { 
-    id: 2, 
-    title: "API Integration - Checkout", 
-    project: "E-Commerce App", 
-    deadline: "2024-05-18", 
-    status: "Delayed", 
-    color: "red",
-    progress: 40,
-    estTime: "8h"
-  },
-  { 
-    id: 3, 
-    title: "User Acceptance Testing", 
-    project: "SaaS Platform", 
-    deadline: "2024-05-25", 
-    status: "On-Time", 
-    color: "green",
-    progress: 10,
-    estTime: "16h"
-  },
+const statCards = [
+  { title: "Assigned Tasks", value: "08", icon: ListTodo, color: "text-indigo-500", bg: "bg-indigo-500/10" },
+  { title: "In Progress", value: "03", icon: Clock, color: "text-amber-500", bg: "bg-amber-500/10" },
+  { title: "Completed", value: "04", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+  { title: "Delayed", value: "01", icon: AlertCircle, color: "text-rose-500", bg: "bg-rose-500/10" },
+  { title: "Today's Tracked", value: "3h 20m", icon: Timer, color: "text-purple-500", bg: "bg-purple-500/10" },
 ];
 
-const statusColors = {
-  green: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-  yellow: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-  red: "bg-rose-500/10 text-rose-600 border-rose-500/20",
-};
+const donutData = [
+  { name: "In Progress", value: 3, color: "#f59e0b" },
+  { name: "Completed", value: 4, color: "#10b981" },
+  { name: "Delayed", value: 1, color: "#f43f5e" },
+];
 
-const dotColors = {
-  green: "bg-emerald-500",
-  yellow: "bg-amber-500",
-  red: "bg-rose-500",
-};
+const todaysTasks = [
+  { id: "T1", name: "AWS S3 Bucket Config", project: "Cloud Migration", deadline: "Today", priority: "High", progress: 65 },
+  { id: "T2", name: "OAuth2 Integration", project: "Security Infra", deadline: "Today", priority: "High", progress: 40 },
+];
 
-export function UserDashboard() {
+const recentActivity = [
+  { task: "UI Polish - Sidebar", action: "Status updated to In Progress", time: "2h ago" },
+  { task: "DB Indexing Audit", action: "Marked as Completed", time: "Yesterday" },
+  { task: "OAuth2 Integration", action: "Time logged: 2h 15m", time: "Yesterday" },
+];
+
+const upcomingDeadlines = [
+  { task: "AWS S3 Bucket Config", due: "Today", project: "Cloud Migration", urgent: true },
+  { task: "Chart.js Theme Registry", due: "In 3 days", project: "SaaS Dashboard", urgent: false },
+  { task: "API Docs v3", due: "In 5 days", project: "Cloud Migration", urgent: false },
+];
+
+export function MemberDashboard() {
+  const navigate = useNavigate();
+
   return (
-    <div className="space-y-8 pb-8">
+    <div className="space-y-8 pb-10">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Task Execution
+            My Workspace
           </h1>
           <p className="text-muted-foreground mt-1">
-            Track your tasks, time, and performance metrics.
+            Your assigned tasks, tracked time, and daily execution summary.
           </p>
         </div>
-        
-        <div className="bg-card/50 backdrop-blur-sm border rounded-2xl px-6 py-3 flex items-center gap-6 shadow-sm">
-          <div className="flex items-center gap-2.5">
-            <Timer className="h-5 w-5 text-primary animate-pulse" />
-            <div>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">Current Timer</p>
-              <p className="text-lg font-mono font-bold font-display">02:45:12</p>
-            </div>
-          </div>
-          <div className="h-8 w-px bg-border" />
-          <Button variant="outline" size="icon" className="h-10 w-10 rounded-full border-primary/20 hover:bg-primary/10 hover:text-primary transition-all">
-            <Pause className="h-4 w-4" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2 rounded-xl" onClick={() => navigate("/member/tasks")}>
+            <Play className="h-4 w-4" /> Start Task
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2 rounded-xl" onClick={() => navigate("/member/time")}>
+            <Timer className="h-4 w-4" /> Log Time
+          </Button>
+          <Button size="sm" className="gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 rounded-xl font-bold border-none transition-all active:scale-95" onClick={() => navigate("/member/updates")}>
+            <PenLine className="h-4 w-4" /> Update Status
           </Button>
         </div>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {statCards.map((s, i) => (
+          <motion.div key={s.title} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm group hover:bg-card transition-all duration-300">
+              <CardContent className="p-5">
+                <div className={`p-2.5 rounded-xl w-fit ${s.bg} ${s.color} mb-3 group-hover:scale-110 transition-transform`}>
+                  <s.icon className="h-4 w-4" />
+                </div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{s.title}</p>
+                <h3 className="text-2xl font-black tracking-tighter mt-1">{s.value}</h3>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Active Task Summary */}
-        <Card className="lg:col-span-8 border-none shadow-md bg-card/50 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-lg font-bold text-foreground">Assigned Tasks</CardTitle>
-              <CardDescription>Tasks requiring your immediate attention</CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Badge variant="outline" className="rounded-full">All Tasks</Badge>
-              <Badge variant="secondary" className="rounded-full bg-primary/10 text-primary border-none">3 Active</Badge>
-            </div>
+        {/* Task Status Donut */}
+        <Card className="lg:col-span-4 border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Task Status Overview</CardTitle>
           </CardHeader>
-          <CardContent className="px-0 md:px-6">
-            <div className="space-y-4 pt-2">
-              {myTasks.map((task) => (
-                <div 
-                  key={task.id} 
-                  className="group relative flex flex-col md:flex-row md:items-center justify-between p-4 rounded-2xl border bg-card hover:shadow-lg hover:border-primary/30 transition-all duration-300"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`mt-1 h-2 w-2 rounded-full ${dotColors[task.color as keyof typeof dotColors]}`} />
-                    <div>
-                      <h4 className="font-bold group-hover:text-primary transition-colors">{task.title}</h4>
-                      <p className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
-                        <FolderKanban className="h-3 w-3" /> {task.project}
-                      </p>
-                      <div className="flex items-center gap-4 mt-3">
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 font-medium">
-                          <Clock className="h-3 w-3" /> Est: {task.estTime}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 font-medium">
-                          <Calendar className="h-3 w-3" /> Due: {task.deadline}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col items-end gap-3 mt-4 md:mt-0">
-                    <Badge variant="outline" className={`font-bold text-[10px] px-2.5 py-0.5 rounded-full ${statusColors[task.color as keyof typeof statusColors]}`}>
-                      {task.status}
-                    </Badge>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="h-8 rounded-lg text-xs gap-1.5 border-primary/20 hover:bg-primary/10 hover:text-primary">
-                        <Info className="h-3 w-3" /> Details
-                      </Button>
-                      <Button size="sm" className="h-8 rounded-lg text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 active:scale-95 transition-all">
-                        <PlayCircle className="h-3 w-3" /> Start
-                      </Button>
-                    </div>
-                  </div>
+          <CardContent className="flex flex-col items-center pt-2">
+            <div className="h-[180px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={donutData} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={5} dataKey="value">
+                    {donutData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-3 gap-3 w-full mt-4">
+              {donutData.map(d => (
+                <div key={d.name} className="flex flex-col items-center p-2 rounded-2xl bg-secondary/20">
+                  <span className="text-[9px] font-black text-muted-foreground uppercase">{d.name}</span>
+                  <span className="text-lg font-black" style={{ color: d.color }}>{d.value}</span>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Stats & Actions */}
-        <div className="lg:col-span-4 space-y-6">
-          <Card className="border-none shadow-md bg-gradient-to-br from-primary to-indigo-700 text-primary-foreground overflow-hidden relative">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <Timer className="h-24 w-24" />
+        {/* Today's Tasks */}
+        <Card className="lg:col-span-8 border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Today's Active Tasks</CardTitle>
+              <CardDescription className="text-xs mt-0.5">Tasks due or in progress today</CardDescription>
             </div>
-            <CardHeader>
-              <CardTitle className="text-lg font-bold">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full bg-white/10 hover:bg-white/20 border-white/20 text-white justify-between rounded-xl h-11 backdrop-blur-sm group">
-                Report Issue <AlertTriangle className="h-4 w-4 group-hover:rotate-12 transition-transform" />
-              </Button>
-              <Button className="w-full bg-white/10 hover:bg-white/20 border-white/20 text-white justify-between rounded-xl h-11 backdrop-blur-sm group">
-                Request Feedback <MessageSquare className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Button className="w-full bg-white text-primary hover:bg-primary-foreground/90 justify-between rounded-xl h-11 shadow-lg font-bold group">
-                Complete Daily Log <CheckCircle2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
-              </Button>
-            </CardContent>
-          </Card>
+            <Button variant="ghost" size="sm" className="gap-1 text-xs text-primary font-bold" onClick={() => navigate("/member/tasks")}>
+              All Tasks <ArrowUpRight className="h-3.5 w-3.5" />
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-2">
+            {todaysTasks.map(task => (
+              <div key={task.id} className="p-4 rounded-2xl bg-secondary/20 border border-secondary/30 hover:bg-white hover:shadow-md transition-all group">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <p className="font-bold text-sm group-hover:text-indigo-600 transition-colors">{task.name}</p>
+                    <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5">
+                      <Target className="h-2.5 w-2.5" /> {task.project}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge className="bg-rose-500/10 text-rose-600 border-none text-[8px] font-black uppercase">{task.priority}</Badge>
+                    <Badge className="bg-amber-500/10 text-amber-600 border-none text-[8px] font-black">Due {task.deadline}</Badge>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[10px] font-bold text-muted-foreground">
+                    <span>Progress</span><span className="text-indigo-600">{task.progress}%</span>
+                  </div>
+                  <Progress value={task.progress} className="h-1.5 rounded-full [&>div]:bg-indigo-600" />
+                </div>
+              </div>
+            ))}
+            <Button variant="outline" className="w-full h-10 rounded-2xl border-none bg-secondary/20 text-xs font-bold gap-2" onClick={() => navigate("/member/tasks")}>
+              View All My Tasks <ChevronRight className="h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
 
-          <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-lg font-bold">Your Deadlines</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-rose-500/5 border border-rose-500/10">
-                <div className="flex items-center gap-3">
-                  <div className="h-2 w-2 rounded-full bg-rose-500" />
-                  <p className="text-sm font-medium">Checkout Integration</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Activity */}
+        <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-2">
+            {recentActivity.map((item, i) => (
+              <div key={i} className="flex items-start gap-3 p-3 rounded-2xl hover:bg-secondary/20 transition-colors">
+                <div className="h-8 w-8 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <PenLine className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-xs font-bold text-rose-600">Tomorrow</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
-                <div className="flex items-center gap-3">
-                  <div className="h-2 w-2 rounded-full bg-amber-500" />
-                  <p className="text-sm font-medium">Design Feedback</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold truncate">{item.task}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{item.action}</p>
                 </div>
-                <span className="text-xs font-bold text-amber-600">In 3 Days</span>
+                <span className="text-[9px] font-bold text-muted-foreground/60 whitespace-nowrap shrink-0">{item.time}</span>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Upcoming Deadlines */}
+        <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Upcoming Deadlines</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-2">
+            {upcomingDeadlines.map((d, i) => (
+              <div key={i} className={`flex items-center gap-3 p-3 rounded-2xl border ${d.urgent ? 'bg-rose-500/5 border-rose-200/50' : 'bg-secondary/20 border-transparent'}`}>
+                <div className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${d.urgent ? 'bg-rose-500/10 text-rose-500' : 'bg-indigo-500/10 text-indigo-500'}`}>
+                  <Calendar className="h-3.5 w-3.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold truncate">{d.task}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{d.project}</p>
+                </div>
+                <Badge className={`shrink-0 border-none text-[8px] font-black ${d.urgent ? 'bg-rose-500/10 text-rose-600' : 'bg-secondary text-muted-foreground'}`}>
+                  {d.due}
+                </Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
-
-// Support Icons
-const MessageSquare = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-);

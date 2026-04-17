@@ -31,5 +31,6 @@
   },
   "include": [
     "src"
-  ]
+  ],
+  "exclude": ["tasktreasures-co-b9e24a53"]
 }

@@ -12,6 +12,7 @@
     "skipLibCheck": true,
     "strictNullChecks": false
   },
+  "exclude": ["node_modules", "tasktreasures-co-b9e24a53"],
   "files": [],
   "references": [
     {
