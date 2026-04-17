@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { 
   Plus, MoreVertical, Eye, Edit3, UserPlus, 
   BarChart2, Trash2, CheckCircle, Clock, AlertCircle,
-  Filter, Search, RefreshCcw, X, Info, LayoutTemplate
+  Filter, Search, RefreshCcw, X, Info, LayoutTemplate, Calendar
 } from "lucide-react";
 import { useRole } from "@/contexts/RoleContext";
 import { Button } from "@/components/ui/button";
@@ -111,30 +111,68 @@ export default function ProjectsPage() {
     setIsCreateOpen(true);
   };
 
+  const [isViewingOpen, setIsViewingOpen] = useState(false);
+  const [viewingProject, setViewingProject] = useState<any>(null);
+
   const resetForm = () => {
     setFormData({ name: "", description: "", startDate: "", endDate: "", priority: "Medium", manager: "", duration: "0 days" });
     setEditingProject(null);
   };
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+
+  const filtered = projects.filter(p => 
+    (statusFilter === "All" || p.status === statusFilter) &&
+    (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+     p.manager.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     p.id.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const handleViewDetails = (project: any) => {
+    setViewingProject(project);
+    setIsViewingOpen(true);
+  };
+
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-6 pb-10">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
+          <h1 className="text-2xl font-black tracking-tight text-foreground">Projects</h1>
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.info("Refreshing...")}>
-            <RefreshCcw className="h-4 w-4" /> Refresh
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Filter className="h-4 w-4" /> Filter
-          </Button>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+           <div className="relative group">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <Input 
+                placeholder="Find projects..." 
+                className="h-8 w-40 pl-8 rounded-xl border-none bg-secondary/20 text-[10px] font-bold focus-visible:ring-primary/20"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+           </div>
+           
+           <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-32 rounded-xl border-none bg-secondary/20 text-[10px] font-black uppercase tracking-widest">
+                 <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-none shadow-2xl p-1">
+                 <SelectItem value="All" className="text-[10px] font-bold">All Monitor</SelectItem>
+                 <SelectItem value="Active" className="text-[10px] font-bold">Active</SelectItem>
+                 <SelectItem value="Delayed" className="text-[10px] font-bold">Delayed</SelectItem>
+                 <SelectItem value="Completed" className="text-[10px] font-bold">Completed</SelectItem>
+              </SelectContent>
+           </Select>
+
+           <Button variant="outline" size="sm" className="h-8 rounded-xl font-bold text-[10px] gap-2 border-none bg-secondary/10" onClick={() => toast.info("Syncing inventory...")}>
+              <RefreshCcw className="h-3.5 w-3.5" /> Refresh
+           </Button>
+           
+           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20" onClick={() => { setEditingProject(null); resetForm(); }}>
-                <Plus className="h-4 w-4" /> Create Project
+              <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 rounded-xl h-8 text-[10px] font-black uppercase tracking-widest border-none" onClick={() => { setEditingProject(null); resetForm(); }}>
+                <Plus className="h-3.5 w-3.5" /> Create
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[380px] overflow-hidden rounded-xl border border-border/50 shadow-2xl p-0 gap-0 bg-white dark:bg-slate-950">
@@ -214,7 +252,7 @@ export default function ProjectsPage() {
                 <Button variant="ghost" className="h-7 text-[10px] font-bold px-3" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
                 <Button 
                   variant="outline" 
-                  className="h-7 text-[10px] font-bold gap-1 px-3 border-emerald-500/20 text-emerald-700 hover:bg-emerald-50"
+                  className="h-7 text-[10px] font-bold gap-1 px-3 border-emerald-500/20 text-emerald-700 hover:bg-emerald-50 rounded-lg"
                   onClick={() => {
                     if (!formData.name) return toast.error("Enter project name");
                     toast.info(`Preview: ${formData.name}`, {
@@ -230,13 +268,96 @@ export default function ProjectsPage() {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Project Details Dialog (Kutty Form) */}
+          <Dialog open={isViewingOpen} onOpenChange={setIsViewingOpen}>
+            <DialogContent className="sm:max-w-[340px] rounded-2xl p-0 overflow-hidden border-none shadow-2xl bg-white dark:bg-slate-950">
+               {viewingProject && (
+                 <>
+                    <DialogHeader className="p-4 bg-primary/5 text-left relative overflow-hidden">
+                       <div className="absolute top-0 right-0 p-2 opacity-5 pointer-events-none">
+                          <LayoutTemplate size={60} />
+                       </div>
+                       <div className="flex items-center justify-between mb-1.5">
+                          <Badge variant="outline" className={`text-[8px] px-1.5 py-0 h-3.5 rounded-sm uppercase tracking-widest border-none font-black ${statusConfig[viewingProject.status as keyof typeof statusConfig].color}`}>
+                             {viewingProject.id}
+                          </Badge>
+                       </div>
+                       <DialogTitle className="text-base font-black tracking-tight uppercase leading-tight">{viewingProject.name}</DialogTitle>
+                       <DialogDescription className="text-[9px] font-bold text-muted-foreground/60 line-clamp-1 mt-0.5">
+                          {viewingProject.description}
+                       </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="p-4 space-y-4">
+                       {/* Core Stats Section */}
+                       <div className="grid grid-cols-2 gap-2">
+                          <div className="p-2 rounded-xl bg-secondary/10 border border-secondary/5">
+                             <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 mb-0.5">Status</p>
+                             <div className="flex items-center gap-1.5">
+                                <div className={`h-1.5 w-1.5 rounded-full ${viewingProject.status === "Active" ? "bg-emerald-500" : viewingProject.status === "Delayed" ? "bg-rose-500" : "bg-blue-500"}`} />
+                                <span className="text-[9px] font-black uppercase text-foreground/80">{viewingProject.status}</span>
+                             </div>
+                          </div>
+                          <div className="p-2 rounded-xl bg-secondary/10 border border-secondary/5">
+                             <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 mb-0.5">Priority</p>
+                             <span className="text-[9px] font-black uppercase text-rose-600">{viewingProject.priority}</span>
+                          </div>
+                       </div>
+
+                       {/* Manager & Timeline */}
+                       <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-0.5">
+                             <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">Manager</p>
+                             <p className="text-[10px] font-black">{viewingProject.manager}</p>
+                          </div>
+                          <div className="text-right space-y-0.5">
+                             <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">Deadline</p>
+                             <p className="text-[10px] font-black text-primary">{viewingProject.deadline}</p>
+                          </div>
+                       </div>
+
+                       {/* Team Members Section */}
+                       <div className="space-y-1.5 pt-1">
+                          <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">Active Team</p>
+                          <div className="flex flex-wrap gap-1">
+                             {["Alex J.", "Maria G.", "Steve S.", "James W.", "Emily B."].map((member, i) => (
+                               <div key={i} className="flex items-center gap-1.5 px-2 py-1 bg-secondary/5 rounded-lg border border-border/5">
+                                  <div className="h-4 w-4 rounded-full bg-primary/10 text-primary text-[7px] font-black flex items-center justify-center shrink-0">
+                                     {member.split(" ").map(n => n[0]).join("")}
+                                  </div>
+                                  <span className="text-[9px] font-bold text-foreground/70">{member}</span>
+                               </div>
+                             ))}
+                          </div>
+                       </div>
+
+                       {/* Progress Footer */}
+                       <div className="space-y-1.5 pt-3 border-t border-border/5">
+                          <div className="flex justify-between items-end">
+                             <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 leading-none">Overall Completion</p>
+                             <span className="text-[10px] font-black text-foreground leading-none">{viewingProject.progress}%</span>
+                          </div>
+                          <Progress value={viewingProject.progress} className="h-1 rounded-full bg-secondary/20" />
+                       </div>
+                    </div>
+
+                    <div className="p-3 bg-secondary/5 flex justify-end">
+                       <Button variant="ghost" className="h-7 px-4 rounded-lg font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all" onClick={() => setIsViewingOpen(false)}>
+                          Close
+                       </Button>
+                    </div>
+                 </>
+               )}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       {/* Grid Container */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <AnimatePresence>
-          {projects.map((project, index) => {
+          {filtered.map((project, index) => {
             const StatusIcon = statusConfig[project.status as keyof typeof statusConfig].icon;
             return (
               <motion.div
@@ -259,14 +380,14 @@ export default function ProjectsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 rounded-xl p-1 shadow-lg border-none">
                           <DropdownMenuItem 
-                            className="gap-2 rounded-lg py-1.5 text-xs cursor-pointer focus:bg-primary/5"
+                            className="gap-2 rounded-lg py-1.5 text-xs cursor-pointer focus:bg-primary/5 font-bold"
                             onClick={() => handleEdit(project)}
                           >
                             <Edit3 className="h-3.5 w-3.5 text-amber-500" /> Edit Project
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
-                            className="gap-2 rounded-lg py-1.5 text-xs cursor-pointer focus:bg-rose-500/10 text-rose-600"
+                            className="gap-2 rounded-lg py-1.5 text-xs cursor-pointer focus:bg-rose-500/10 text-rose-600 font-bold"
                             onClick={() => handleDelete(project.id)}
                           >
                             <Trash2 className="h-3.5 w-3.5" /> Delete
@@ -314,14 +435,14 @@ export default function ProjectsPage() {
                     <div className="flex items-center gap-1.5 pt-2 border-t border-muted/20">
                       <Button 
                         variant="ghost" 
-                        className="flex-1 h-8 rounded-lg text-[10px] font-bold gap-1.5 text-primary hover:bg-primary/5"
-                        onClick={() => toast.info(`Project Details: ${project.name}`, { description: project.description })}
+                        className="flex-1 h-8 rounded-lg text-[10px] font-bold gap-1.5 text-primary hover:bg-primary/5 transition-all"
+                        onClick={() => handleViewDetails(project)}
                       >
                         <LayoutTemplate className="h-3 w-3" /> Details
                       </Button>
                       <Button 
                         variant="ghost" 
-                        className="flex-1 h-8 rounded-lg text-[10px] font-bold gap-1.5 text-indigo-500 hover:bg-indigo-500/5"
+                        className="flex-1 h-8 rounded-lg text-[10px] font-bold gap-1.5 text-indigo-500 hover:bg-indigo-500/5 transition-all"
                         onClick={() => navigate(`/reports?projectId=${project.id}`)}
                       >
                         <BarChart2 className="h-3 w-3" /> Report
