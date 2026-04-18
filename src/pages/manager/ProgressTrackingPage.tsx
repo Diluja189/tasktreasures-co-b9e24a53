@@ -52,72 +52,127 @@ export default function ProgressTrackingPage() {
     return matchesProject && matchesSearch;
   });
 
+  const totalProjects = new Set(trackingItems.map(i => i.project)).size;
+  const activeTasks = trackingItems.length;
+  const completedTasks = trackingItems.filter(i => i.status === "Completed").length;
+  const delayedTasks = trackingItems.filter(i => i.status === "Delayed").length;
+
   return (
-    <div className="space-y-8 pb-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent italic underline decoration-indigo-500/20 underline-offset-8">
+    <div className="space-y-8 pb-12">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex flex-col justify-center">
+           <h1 className="text-2xl font-bold tracking-tight text-foreground">
              Operational Velocity Tracker
            </h1>
-           <p className="text-muted-foreground mt-2">Monitor implementation depth and timeline adherence across your leadership scope.</p>
+           <p className="text-sm text-muted-foreground mt-1 font-medium">Monitor implementation depth and timeline adherence across your projects.</p>
         </div>
         
-        <div className="flex items-center gap-2">
-           <Button variant="outline" size="sm" className="gap-2 rounded-xl" onClick={() => toast.info("Recalculating project health...")}>
-              <RefreshCw className="h-4 w-4" /> Hard Refresh
+        <div className="flex items-center gap-4">
+           <Button variant="outline" size="sm" className="gap-2 rounded-xl h-10 px-4 border border-border bg-white shadow-sm font-bold text-xs" onClick={() => toast.info("Recalculating project health...")}>
+              <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" /> Refresh
            </Button>
-           <div className="bg-secondary/30 p-1 rounded-xl flex gap-1 h-9">
-              <Button variant={viewMode === 'kanban' ? 'secondary' : 'ghost'} size="sm" className="h-7 rounded-lg" onClick={() => setViewMode('kanban')}>
-                 <LayoutGrid className="h-3 w-3 mr-2" /> Kanban
+           <div className="bg-secondary/40 p-1 rounded-xl flex items-center gap-1 h-10 border border-border/50 shadow-sm">
+              <Button variant={viewMode === 'kanban' ? 'secondary' : 'ghost'} size="sm" className={`h-8 rounded-lg font-bold text-xs px-3 ${viewMode === 'kanban' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground'}`} onClick={() => setViewMode('kanban')}>
+                 <LayoutGrid className="h-3.5 w-3.5 mr-2" /> Kanban
               </Button>
-              <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="sm" className="h-7 rounded-lg" onClick={() => setViewMode('table')}>
-                 <List className="h-3 w-3 mr-2" /> List View
+              <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="sm" className={`h-8 rounded-lg font-bold text-xs px-3 ${viewMode === 'table' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground'}`} onClick={() => setViewMode('table')}>
+                 <List className="h-3.5 w-3.5 mr-2" /> List
               </Button>
            </div>
         </div>
       </div>
 
+      {/* KPI Summary Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+         <Card className="border border-border/50 shadow-sm bg-white rounded-2xl">
+           <CardContent className="p-4 flex items-center gap-4">
+             <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><GanttChart className="w-4 h-4" /></div>
+             <div>
+               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Total Projects</p>
+               <p className="text-xl font-black text-foreground">{totalProjects}</p>
+             </div>
+           </CardContent>
+         </Card>
+         <Card className="border border-border/50 shadow-sm bg-white rounded-2xl">
+           <CardContent className="p-4 flex items-center gap-4">
+             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Activity className="w-4 h-4" /></div>
+             <div>
+               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Active Tasks</p>
+               <p className="text-xl font-black text-foreground">{activeTasks}</p>
+             </div>
+           </CardContent>
+         </Card>
+         <Card className="border border-border/50 shadow-sm bg-white rounded-2xl">
+           <CardContent className="p-4 flex items-center gap-4">
+             <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><CheckCircle2 className="w-4 h-4" /></div>
+             <div>
+               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Completed</p>
+               <p className="text-xl font-black text-foreground">{completedTasks}</p>
+             </div>
+           </CardContent>
+         </Card>
+         <Card className="border border-border/50 shadow-sm bg-white rounded-2xl">
+           <CardContent className="p-4 flex items-center gap-4">
+             <div className="p-2.5 bg-rose-50 text-rose-600 rounded-xl"><AlertTriangle className="w-4 h-4" /></div>
+             <div>
+               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Delayed</p>
+               <p className="text-xl font-black text-rose-600">{delayedTasks}</p>
+             </div>
+           </CardContent>
+         </Card>
+      </div>
+
       {/* Project Health Snapshots */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
          {projectHighlights.map(p => (
-           <Card key={p.name} className="border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden relative group">
-              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
+           <Card key={p.name} className="border border-border/50 shadow-sm bg-white rounded-2xl overflow-hidden relative group">
+              <div className="absolute -top-4 -right-4 p-6 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform">
                  <Activity size={100} />
               </div>
-              <CardContent className="p-6">
-                 <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-3">
-                       <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center font-black">
+              <CardContent className="p-6 flex flex-col justify-between h-full space-y-6">
+                 <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-4">
+                       <div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
                           {p.name[0]}
                        </div>
                        <div>
-                          <p className="font-bold text-sm tracking-tight">{p.name}</p>
-                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest leading-none">{p.total} Active Units</p>
+                          <p className="font-bold text-base text-foreground tracking-tight leading-tight">{p.name}</p>
+                          <p className="text-xs text-muted-foreground font-medium mt-1">{p.total} Total Units</p>
                        </div>
                     </div>
-                    <Badge variant="outline" className={`${p.health > 80 ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border-amber-500/20'} text-[9px] font-black uppercase`}>
+                    <Badge variant="outline" className={`${p.health > 80 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'} text-[10px] font-black uppercase px-2 py-1`}>
                        {p.health}% Health
                     </Badge>
                  </div>
+                 
                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                       <Progress value={p.health} className={`h-2 flex-1 rounded-full ${p.health > 80 ? '[&>div]:bg-emerald-500' : '[&>div]:bg-amber-500'}`} />
-                       <span className="text-xs font-black min-w-[32px] text-right">{p.health}%</span>
+                    <div className="space-y-2">
+                       <div className="flex justify-between items-center text-xs font-medium text-muted-foreground">
+                          <span>Progress Overall</span>
+                          <span className="font-bold text-foreground">{p.health}%</span>
+                       </div>
+                       <Progress value={p.health} className={`h-2 min-w-full bg-secondary ${p.health > 80 ? '[&>div]:bg-emerald-500' : '[&>div]:bg-amber-500'}`} />
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                       <div className="bg-secondary/30 p-2 rounded-xl text-center">
-                          <p className="text-[9px] font-black uppercase text-muted-foreground/60 mb-0.5">Done</p>
+                    
+                    <div className="grid grid-cols-3 gap-4 pt-2">
+                       <div className="bg-secondary/30 p-3 rounded-xl border border-border/40 text-center">
+                          <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Done</p>
                           <p className="text-sm font-black text-emerald-600">{p.completed}</p>
                        </div>
-                       <div className="bg-secondary/30 p-2 rounded-xl text-center">
-                          <p className="text-[9px] font-black uppercase text-muted-foreground/60 mb-0.5">Ops</p>
+                       <div className="bg-secondary/30 p-3 rounded-xl border border-border/40 text-center">
+                          <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Active</p>
                           <p className="text-sm font-black text-indigo-600">{p.total - p.completed - p.delayed}</p>
                        </div>
-                       <div className="bg-secondary/30 p-2 rounded-xl text-center border border-dashed border-rose-500/20">
-                          <p className="text-[9px] font-black uppercase text-rose-400 mb-0.5">Risk</p>
+                       <div className="bg-rose-50/50 p-3 rounded-xl border border-rose-100 text-center">
+                          <p className="text-[10px] font-bold uppercase text-rose-500 mb-1">Risk</p>
                           <p className="text-sm font-black text-rose-600">{p.delayed}</p>
                        </div>
                     </div>
+
+                    <Button variant="outline" className="w-full text-xs font-bold h-10 rounded-xl relative z-10 hover:bg-slate-50 transition-colors">
+                      View Project
+                    </Button>
                  </div>
               </CardContent>
            </Card>
@@ -125,30 +180,30 @@ export default function ProgressTrackingPage() {
       </div>
 
       {/* Control Module */}
-      <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-card/50 backdrop-blur-sm p-4 rounded-3xl border shadow-sm">
-         <div className="relative w-full lg:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col lg:flex-row items-center gap-6 bg-white p-4 rounded-2xl border border-border/50 shadow-sm">
+         <div className="relative w-full flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Filter roadmap tracking..." 
-              className="pl-10 h-10 border-none bg-background rounded-xl"
+              placeholder="Search specific tasks or assignees..." 
+              className="pl-11 h-11 border border-border/50 bg-secondary/10 rounded-xl text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
          </div>
-         <div className="flex items-center gap-3 w-full lg:w-auto">
+         <div className="flex items-center gap-4 w-full lg:w-auto shrink-0">
             <Select value={projectFilter} onValueChange={setProjectFilter}>
-               <SelectTrigger className="h-10 rounded-xl border-none bg-background w-full lg:w-56 font-bold text-[11px]">
+               <SelectTrigger className="h-11 rounded-xl border border-border/50 bg-secondary/10 w-full lg:w-[200px] font-bold text-xs">
                   <SelectValue placeholder="All Projects" />
                </SelectTrigger>
-               <SelectContent className="rounded-2xl border-none shadow-2xl">
+               <SelectContent className="rounded-2xl border-none shadow-xl">
                   <SelectItem value="All">All Projects</SelectItem>
                   <SelectItem value="Security Infrastructure">Security Infrastructure</SelectItem>
                   <SelectItem value="Cloud Migration">Cloud Migration</SelectItem>
                   <SelectItem value="SaaS Dashboard">SaaS Dashboard</SelectItem>
                </SelectContent>
             </Select>
-            <Button variant="secondary" className="h-10 rounded-xl gap-2 px-6 flex-1 lg:flex-none">
-               <GanttChart className="h-4 w-4" /> Timeline Audit
+            <Button className="h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 px-6 flex-1 lg:flex-none shadow-sm text-xs">
+               <GanttChart className="h-4 w-4" /> Timeline
             </Button>
          </div>
       </div>
@@ -157,59 +212,67 @@ export default function ProgressTrackingPage() {
       {viewMode === 'kanban' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
            {kanbanColumns.map(column => (
-             <div key={column} className="space-y-4">
+             <div key={column} className="flex flex-col h-full space-y-4">
                 <div className="flex items-center justify-between px-2">
                    <div className="flex items-center gap-2">
-                      <div className={`h-2 w-2 rounded-full ${column === 'Delayed' ? 'bg-rose-500 animate-pulse' : (column === 'Completed' ? 'bg-emerald-500' : 'bg-indigo-500')}`} />
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{column}</p>
+                      <div className={`h-2.5 w-2.5 rounded-full ${column === 'Delayed' ? 'bg-rose-500' : (column === 'Completed' ? 'bg-emerald-500' : column === 'Not Started' ? 'bg-slate-400' : 'bg-indigo-500')}`} />
+                      <p className="text-sm font-bold text-foreground">{column}</p>
                    </div>
-                   <Badge variant="secondary" className="bg-secondary/40 text-[9px] font-bold h-5 px-1.5">{filteredItems.filter(t => t.status === column).length}</Badge>
+                   <Badge variant="secondary" className="bg-secondary/60 text-xs font-bold px-2.5 py-0.5 rounded-md border border-border/60 shadow-sm">
+                     {filteredItems.filter(t => t.status === column).length}
+                   </Badge>
                 </div>
                 
-                <div className="space-y-4 min-h-[400px] bg-secondary/10 rounded-3xl p-3 border border-dashed border-border/40">
-                   {filteredItems.filter(t => t.status === column).map((item, i) => (
-                     <motion.div
-                       key={item.id}
-                       initial={{ opacity: 0, y: 10 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       transition={{ delay: i * 0.05 }}
-                     >
-                        <Card className="border-none shadow-sm bg-white rounded-2xl group hover:shadow-lg transition-all border border-indigo-500/0 hover:border-indigo-500/10">
-                           <CardHeader className="p-4 pb-2">
-                              <div className="flex justify-between items-start mb-1">
-                                 <p className="text-[9px] font-black uppercase tracking-tight text-indigo-600/60 leading-none">{item.project}</p>
-                                 <Badge className={`${item.priority === 'High' ? 'bg-rose-500/10 text-rose-600' : 'bg-indigo-500/10 text-indigo-600'} border-none text-[7px] h-3.5 leading-none font-black`}>{item.priority}</Badge>
-                              </div>
-                              <CardTitle className="text-xs font-bold leading-tight italic group-hover:text-primary transition-colors">{item.name}</CardTitle>
-                           </CardHeader>
-                           <CardContent className="p-4 pt-2 space-y-4">
-                              <div className="flex items-center justify-between">
-                                 <div className="flex items-center gap-2">
-                                    <div className="h-6 w-6 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-[7px] font-black border border-indigo-500/10">
-                                       {item.assignee.split(' ').map(n=>n[0]).join('')}
+                <div className="flex flex-col gap-4 flex-1 bg-secondary/10 rounded-2xl p-4 border border-border/50 min-h-[500px]">
+                   {filteredItems.filter(t => t.status === column).map((item, i) => {
+                      const isDelayed = item.status === 'Delayed';
+                      const isCompleted = item.status === 'Completed';
+                      return (
+                         <motion.div
+                           key={item.id}
+                           initial={{ opacity: 0, y: 10 }}
+                           animate={{ opacity: 1, y: 0 }}
+                           transition={{ delay: i * 0.05 }}
+                         >
+                            <Card className={`shadow-sm bg-white rounded-xl transition-all ${isDelayed ? 'border-2 border-rose-400 shadow-rose-100' : 'border border-border/50 hover:border-indigo-300'}`}>
+                               <CardHeader className="p-5 pb-3">
+                                  <div className="flex justify-between items-start mb-3">
+                                     <p className="text-[10px] font-bold uppercase text-muted-foreground leading-none">{item.project}</p>
+                                     <Badge className={`${item.priority === 'High' ? 'bg-rose-50 text-rose-600 border-rose-200' : item.priority === 'Medium' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'} text-[10px] px-2 py-0.5 leading-none font-bold border rounded-md shadow-sm`}>{item.priority}</Badge>
+                                  </div>
+                                  <CardTitle className="text-sm font-bold text-foreground leading-tight">{item.name}</CardTitle>
+                               </CardHeader>
+                               <CardContent className="p-5 pt-0 space-y-4">
+                                  <div className="flex items-center justify-between">
+                                     <div className="flex items-center gap-3">
+                                        <div className="h-6 w-6 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center text-[10px] font-bold border border-indigo-100 shrink-0">
+                                           {item.assignee.split(' ').map(n=>n[0]).join('')}
+                                        </div>
+                                        <span className="text-xs font-semibold text-muted-foreground">{item.assignee}</span>
+                                     </div>
+                                     <span className={`text-[11px] font-bold flex items-center gap-1.5 ${isDelayed ? 'text-rose-600' : 'text-slate-500'}`}>
+                                        <Calendar className="h-3.5 w-3.5" /> {item.deadline}
+                                     </span>
+                                  </div>
+                                  {column !== 'Not Started' && (
+                                    <div className="space-y-2">
+                                       <div className="flex justify-between text-[11px] font-bold text-muted-foreground">
+                                          <span>Progress</span>
+                                          <span className={isDelayed ? 'text-rose-600' : isCompleted ? 'text-emerald-600' : 'text-indigo-600'}>{item.progress}%</span>
+                                       </div>
+                                       <Progress value={item.progress} className={`h-1.5 rounded-full bg-secondary/80 ${isDelayed ? '[&>div]:bg-rose-500' : (item.progress > 80 ? '[&>div]:bg-emerald-500' : '[&>div]:bg-indigo-500')}`} />
                                     </div>
-                                    <span className="text-[9px] font-bold">{item.assignee}</span>
-                                 </div>
-                                 <span className={`text-[9px] font-black uppercase flex items-center gap-1 ${item.status === 'Delayed' ? 'text-rose-500' : 'text-muted-foreground'}`}>
-                                    <Calendar className="h-2.5 w-2.5" /> {item.deadline}
-                                 </span>
-                              </div>
-                              {column !== 'Not Started' && (
-                                <div className="space-y-1.5">
-                                   <div className="flex justify-between text-[8px] font-black tracking-widest text-muted-foreground/50">
-                                      <span>EXECUTION</span>
-                                      <span>{item.progress}%</span>
-                                   </div>
-                                   <Progress value={item.progress} className={`h-1 rounded-full ${item.status === 'Delayed' ? '[&>div]:bg-rose-500' : (item.progress > 80 ? '[&>div]:bg-emerald-500' : '[&>div]:bg-indigo-600')}`} />
-                                </div>
-                              )}
-                              <Button variant="ghost" className="w-full h-7 rounded-xl text-[9px] font-black uppercase tracking-widest gap-1 border-none hover:bg-secondary group" onClick={() => toast.info("Opening audit context...")}>
-                                 Inspect <ArrowUpRight className="h-3 w-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                              </Button>
-                           </CardContent>
-                        </Card>
-                     </motion.div>
-                   ))}
+                                  )}
+                                  <div className="pt-2">
+                                      <Button variant="outline" size="sm" className={`w-full h-9 rounded-xl text-xs font-bold gap-2 border-border/60 ${isDelayed ? 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200' : 'text-indigo-600 hover:bg-indigo-50'}`} onClick={() => toast.info("Opening audit context...")}>
+                                         Inspect <ArrowUpRight className="h-3.5 w-3.5" />
+                                      </Button>
+                                  </div>
+                               </CardContent>
+                            </Card>
+                         </motion.div>
+                      );
+                   })}
                 </div>
              </div>
            ))}
