@@ -31,7 +31,6 @@ const navByRole: Record<UserRole, { label: string; items: { title: string; url: 
     ]},
     { label: "Intelligence & Compliance", items: [
       { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
-      { title: "Performance Analysis", url: "/performance", icon: LineChart },
       { title: "Notifications", url: "/notifications", icon: Bell },
       { title: "Audit Logs", url: "/audit-logs", icon: FileText },
       { title: "Settings", url: "/settings", icon: Settings },

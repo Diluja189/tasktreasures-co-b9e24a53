@@ -28,7 +28,8 @@ import RegisterPage from "@/pages/RegisterPage";
 import AssignManagerPage from "@/pages/AssignManagerPage";
 import MonitoringPage from "@/pages/MonitoringPage";
 import ManagersPage from "@/pages/ManagersPage";
-import PerformancePage from "@/pages/PerformancePage";
+// import PerformancePage from "@/pages/PerformancePage";
+
 
 // Manager Pages
 import ManagerProjectsPage from "@/pages/manager/ManagerProjectsPage";
@@ -64,7 +65,8 @@ const App = () => {
                 <Route path="/assign-manager" element={<AssignManagerPage />} />
                 <Route path="/monitoring" element={<MonitoringPage />} />
                 <Route path="/managers" element={<ManagersPage />} />
-                <Route path="/performance" element={<PerformancePage />} />
+
+
                 
                 {/* Manager Specific Routes */}
                 <Route path="/manager/projects" element={<ManagerProjectsPage />} />
