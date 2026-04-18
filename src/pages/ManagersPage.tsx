@@ -25,14 +25,18 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
+import { useRole } from "@/contexts/RoleContext";
+
 const initialManagers = [
   { id: "M1", name: "Sarah Chen", email: "sarah@company.com", projects: 4, score: 94, status: "Active", specialty: "Agile / Scrum", avatar: "SC" },
-  { id: "M2", name: "David Kim", email: "david@company.com", projects: 2, score: 88, status: "Peak Load", specialty: "Infrastructure", avatar: "DK" },
+  { id: "M2", name: "David Kim", email: "david@company.com", projects: 2, score: 88, status: "Invited", specialty: "Infrastructure", avatar: "DK" },
   { id: "M3", name: "Lisa Wang", email: "lisa@company.com", projects: 3, score: 91, status: "Active", specialty: "Product Design", avatar: "LW" },
-  { id: "M4", name: "John Miller", email: "john@company.com", projects: 5, score: 82, status: "Delayed", specialty: "Frontend", avatar: "JM" },
+  { id: "M4", name: "John Miller", email: "john@company.com", projects: 5, score: 82, status: "Invited", specialty: "Frontend", avatar: "JM" },
 ];
 
 export default function ManagersPage() {
+  const { currentUser } = useRole();
+  const isAdmin = currentUser.role === "admin";
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -49,7 +53,11 @@ export default function ManagersPage() {
 
   const handleAddManager = () => {
     if (!newManager.name || !newManager.email) return toast.error("Please fill required fields");
-    toast.success(`Manager "${newManager.name}" added to leadership pool`);
+    
+    // Invite Flow
+    toast.success(`Invitation sent to ${newManager.email}`);
+    toast.info("Status set to Invited. Activation link generated.");
+    
     setIsAddModalOpen(false);
     setNewManager({ name: "", email: "", specialty: "" });
   };
@@ -72,13 +80,15 @@ export default function ManagersPage() {
            <Button variant="outline" size="sm" className="h-8 rounded-xl font-bold text-[10px] gap-2 border-none bg-secondary/10" onClick={() => toast.info("Syncing inventory...")}>
               <RefreshCw className="h-3.5 w-3.5" /> Refresh
            </Button>
-           <Button 
-            size="sm" 
-            className="h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[10px] font-black uppercase tracking-widest border-none transition-all active:scale-95 shadow-lg shadow-indigo-600/20"
-            onClick={() => setIsAddModalOpen(true)}
-           >
-              <Plus className="h-3.5 w-3.5" /> Add Leader
-           </Button>
+           {isAdmin && (
+             <Button 
+              size="sm" 
+              className="h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[10px] font-black uppercase tracking-widest border-none transition-all active:scale-95 shadow-lg shadow-indigo-600/20"
+              onClick={() => setIsAddModalOpen(true)}
+             >
+                <Plus className="h-3.5 w-3.5" /> Add Leader
+             </Button>
+           )}
         </div>
       </div>
 
@@ -133,6 +143,11 @@ export default function ManagersPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40 rounded-xl border-none shadow-2xl p-1">
                              <DropdownMenuItem className="gap-2 rounded-lg py-1.5 text-[10px] font-bold"><Edit2 className="h-3 w-3" /> Edit Profile</DropdownMenuItem>
+                             {manager.status === "Invited" && (
+                               <DropdownMenuItem className="gap-2 rounded-lg py-1.5 text-[10px] font-bold text-indigo-500" onClick={() => toast.success(`Invitation resent to ${manager.email}`)}>
+                                 <RefreshCw className="h-3 w-3" /> Resend Invite
+                               </DropdownMenuItem>
+                             )}
                              <DropdownMenuItem className="gap-2 rounded-lg py-1.5 text-[10px] font-bold"><Shield className="h-3 w-3" /> Access</DropdownMenuItem>
                              <DropdownMenuSeparator className="opacity-50" />
                              <DropdownMenuItem className="gap-2 rounded-lg py-1.5 text-[10px] font-bold text-rose-500"><Trash2 className="h-3 w-3" /> Remove</DropdownMenuItem>

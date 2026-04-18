@@ -1,149 +1,188 @@
 import { useState } from "react";
 import { 
-  FileText, Search, Filter, Calendar, 
-  User, RefreshCw, Download, ArrowUpRight,
-  ShieldCheck, History, Activity, Database
+  Search, Calendar, User, 
+  FolderKanban, CheckSquare, Users, 
+  Clock, ArrowRight, Activity, Zap, ListFilter
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
 
 const logs = [
-  { id: 1, user: "Admin (Strategic)", action: "Created project", target: "Cloud Migration Phase 2", timestamp: "2025-07-01 14:32:10", type: "project", severity: "Low" },
-  { id: 2, user: "Admin (Strategic)", action: "Assigned manager", target: "Sarah Chen → Mobile App v2", timestamp: "2025-07-01 13:15:45", type: "assignment", severity: "Medium" },
-  { id: 3, user: "Sarah Chen", action: "Approved task", target: "DB schema audit", timestamp: "2025-07-01 12:08:22", type: "task", severity: "Low" },
-  { id: 4, user: "System", action: "Deadline modification", target: "SaaS Redesign → Aug 15", timestamp: "2025-07-01 11:45:00", type: "system", severity: "High" },
-  { id: 5, user: "Admin (Strategic)", action: "Revoked access", target: "Contractor ID-442", timestamp: "2025-06-30 16:20:33", type: "security", severity: "High" },
-  { id: 6, user: "David Kim", action: "Resigned leadership", target: "Legacy Infrastructure", timestamp: "2025-06-30 15:10:18", type: "assignment", severity: "Medium" },
+  { id: 1, user: "Admin", action: "created", type: "Project", target: "Cloud Migration Phase 2", time: "2h ago", timestamp: "2024-04-18T08:00:00Z" },
+  { id: 2, user: "Sarah Chen", action: "assigned", type: "Manager", target: "Mobile App v2", time: "4h ago", timestamp: "2024-04-18T06:00:00Z" },
+  { id: 3, user: "Mike Jones", action: "completed", type: "Task", target: "DB schema audit", time: "6h ago", timestamp: "2024-04-18T04:00:00Z" },
+  { id: 4, user: "System", action: "updated", type: "Status", target: "SaaS Redesign Deadline", time: "1d ago", timestamp: "2024-04-17T12:00:00Z" },
+  { id: 5, user: "Admin", action: "revoked", type: "Access", target: "Contractor ID-442", time: "2d ago", timestamp: "2024-04-16T15:00:00Z" },
+  { id: 6, user: "David Kim", action: "changed", type: "Role", target: "Project Lead → Engineering", time: "3d ago", timestamp: "2024-04-15T10:00:00Z" },
+  { id: 7, user: "Sarah Chen", action: "updated", type: "Timeline", target: "Mobile App Q2 Launch", time: "3d ago", timestamp: "2024-04-15T09:00:00Z" },
+  { id: 8, user: "Admin", action: "modified", type: "Permissions", target: "Analytics Module", time: "4d ago", timestamp: "2024-04-14T14:00:00Z" },
 ];
 
-const typeStyles = {
-  project: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
-  assignment: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-  task: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  system: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-  security: "bg-rose-500/10 text-rose-600 border-rose-500/20",
+const getIcon = (type: string) => {
+  switch (type.toLowerCase()) {
+    case 'project': return FolderKanban;
+    case 'task': return CheckSquare;
+    case 'manager':
+    case 'user':
+    case 'role': return Users;
+    case 'permissions':
+    case 'access': return Zap;
+    default: return Activity;
+  }
 };
 
 export default function AuditLogsPage() {
-  const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
+
+  const filteredLogs = logs.filter(log => {
+    const matchesSearch = 
+      log.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.target.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.action.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (activeFilter === "All") return matchesSearch;
+    return matchesSearch && log.type.toLowerCase().includes(activeFilter.toLowerCase());
+  });
+
+  const filters = ["All", "Project", "Task", "User", "Access"];
 
   return (
-    <div className="space-y-8 pb-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-             Enterprise Audit Records
-           </h1>
-           <p className="text-muted-foreground mt-1">Immutable traceability of all strategic data modifications.</p>
+    <div className="max-w-5xl mx-auto space-y-12 pb-20">
+      {/* Premium Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+             <div className="h-10 w-10 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/20">
+                <Activity className="h-5 w-5 text-white" />
+             </div>
+             <h1 className="text-3xl font-black tracking-tighter text-foreground uppercase italic">
+                Activity Ledger
+             </h1>
+          </div>
+          <p className="text-muted-foreground text-xs font-black uppercase tracking-[0.2em] opacity-50">
+            Immutable trace of system-wide operations
+          </p>
         </div>
-        
-        <div className="flex flex-wrap items-center gap-2">
-           <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.info("Audit trail synchronized.")}>
-              <RefreshCw className="h-4 w-4" /> Refresh Trail
-           </Button>
-           <Button size="sm" className="gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 font-bold border-none px-6">
-              Export Audit PDF <Download className="h-4 w-4" />
-           </Button>
+
+        <div className="flex items-center gap-2 bg-secondary/10 p-1 rounded-2xl border border-secondary/5 backdrop-blur-md">
+           {filters.map(filter => (
+             <Button
+               key={filter}
+               variant="ghost"
+               onClick={() => setActiveFilter(filter)}
+               className={`h-8 rounded-xl px-4 text-[10px] font-black uppercase tracking-widest transition-all ${
+                 activeFilter === filter 
+                   ? "bg-foreground text-background shadow-md" 
+                   : "text-muted-foreground hover:bg-secondary/20"
+               }`}
+             >
+               {filter}
+             </Button>
+           ))}
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-card/50 backdrop-blur-sm p-4 rounded-3xl border shadow-sm">
-         <div className="relative w-full lg:w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search historical records..." 
-              className="pl-10 h-10 border-none bg-background rounded-xl"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-         </div>
-         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <Select defaultValue="all">
-               <SelectTrigger className="h-10 rounded-xl border-none bg-background min-w-[150px]">
-                  <SelectValue placeholder="Action Type" />
-               </SelectTrigger>
-               <SelectContent className="rounded-2xl shadow-xl p-1.5 border-none">
-                  <SelectItem value="all">All Actions</SelectItem>
-                  <SelectItem value="project">Project Changes</SelectItem>
-                  <SelectItem value="assignment">Assignments</SelectItem>
-                  <SelectItem value="security">Security Events</SelectItem>
-               </SelectContent>
-            </Select>
-            <Button variant="secondary" className="h-10 rounded-xl px-4 gap-2 flex-grow lg:flex-none">
-               <Filter className="h-4 w-4" /> Advanced Filter
-            </Button>
-         </div>
+      {/* Control & Search Bar */}
+      <div className="relative max-w-md">
+         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+         <Input 
+            placeholder="Search by user, action, target..." 
+            className="pl-10 h-10 border-none bg-secondary/10 rounded-2xl text-[11px] font-bold focus-visible:ring-indigo-500/30"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+         />
       </div>
 
-      <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden">
-        <CardHeader className="bg-secondary/20 border-b border-border/50 pb-6 flex flex-row items-center justify-between">
-           <div>
-              <CardTitle className="text-lg font-bold">Activity Chronology</CardTitle>
-              <CardDescription>Comprehensive ledger of enterprise-wide state changes.</CardDescription>
-           </div>
-           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-none font-bold text-[10px] px-3">PROTECTED LOGS</Badge>
-        </CardHeader>
-        <CardContent className="p-0">
-           <div className="divide-y divide-border/30">
-              <AnimatePresence>
-                 {logs.map((log, i) => (
-                   <motion.div 
-                     key={log.id}
-                     initial={{ opacity: 0, x: -10 }}
-                     animate={{ opacity: 1, x: 0 }}
-                     transition={{ delay: i * 0.05 }}
-                     className="p-6 hover:bg-secondary/5 transition-colors flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group"
-                   >
-                      <div className="flex items-start gap-4 flex-1">
-                         <div className={`h-11 w-11 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm transition-transform group-hover:scale-105 ${typeStyles[log.type as keyof typeof typeStyles]}`}>
-                            {log.type === 'project' && <Database className="h-5 w-5" />}
-                            {log.type === 'assignment' && <User className="h-5 w-5" />}
-                            {log.type === 'security' && <ShieldCheck className="h-5 w-5" />}
-                            {log.type === 'system' && <History className="h-5 w-5" />}
-                            {log.type === 'task' && <Activity className="h-5 w-5" />}
-                         </div>
-                         <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                               <p className="text-sm font-bold tracking-tight">{log.user}</p>
-                               <p className="text-sm text-muted-foreground">{log.action}</p>
-                               <Badge className={`${log.severity === 'High' ? 'bg-rose-500/10 text-rose-600' : 'bg-secondary text-muted-foreground'} border-none text-[8px] font-black h-4 px-1 px-1.5`}>{log.severity} RISK</Badge>
-                            </div>
-                            <p className="text-xs font-bold text-indigo-600 mt-0.5">{log.target}</p>
-                         </div>
-                      </div>
-                      <div className="flex flex-col md:items-end gap-2 text-right">
-                         <Badge variant="outline" className={`text-[10px] font-bold uppercase ${typeStyles[log.type as keyof typeof typeStyles]}`}>
-                            {log.type} Record
-                         </Badge>
-                         <p className="text-[10px] font-medium text-muted-foreground uppercase flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {log.timestamp}</p>
-                      </div>
-                   </motion.div>
-                 ))}
-              </AnimatePresence>
-           </div>
-        </CardContent>
-      </Card>
+      {/* Timeline Section */}
+      <div className="relative">
+         {/* Background Decoration */}
+         <div className="absolute -right-20 top-20 opacity-[0.03] pointer-events-none rotate-45 scale-150">
+            <ListFilter size={400} />
+         </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-         <Card className="border-none shadow-md bg-indigo-600 text-white rounded-3xl p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-               <History size={60} />
-            </div>
-            <p className="text-xs font-bold opacity-70 uppercase tracking-widest">Storage Policy</p>
-            <p className="text-lg font-bold mt-2 italic">90-Day Retention</p>
-         </Card>
-         <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl p-6 border-dashed border-2 flex flex-col justify-center">
-            <p className="text-xs font-bold text-muted-foreground uppercase">Compliance Grade</p>
-            <div className="flex items-center gap-2 mt-1">
-               <span className="text-2xl font-bold">A+</span>
-               <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-bold text-[9px]">SECURE</Badge>
-            </div>
-         </Card>
+         <div className="bg-white/5 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+            <ScrollArea className="h-[600px]">
+               <div className="p-5 space-y-3 relative">
+                  {/* Timeline Vertical Line */}
+                  <div className="absolute left-[45px] top-6 bottom-6 w-px bg-gradient-to-b from-transparent via-border/50 to-transparent" />
+
+                  <AnimatePresence mode="popLayout">
+                    {filteredLogs.map((log, i) => {
+                      const Icon = getIcon(log.type);
+                      return (
+                        <motion.div 
+                          key={log.id}
+                          layout
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, scale: 0.98 }}
+                          transition={{ delay: i * 0.02 }}
+                          className="relative flex items-center gap-6 group"
+                        >
+                           {/* Log Timestamp (Left Side) - Smaller Width */}
+                           <div className="w-14 hidden md:block text-right">
+                              <p className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-widest group-hover:text-indigo-500 transition-colors">
+                                 {log.time}
+                              </p>
+                           </div>
+
+                           {/* Icon Node - Smaller */}
+                           <div className="relative z-10 h-10 w-10 rounded-xl bg-background border-2 shadow-sm flex items-center justify-center shrink-0 transition-all duration-500 group-hover:rotate-6 group-hover:border-indigo-500/30 group-hover:shadow-indigo-500/10">
+                              <Icon className="h-4 w-4 text-muted-foreground group-hover:text-indigo-500 transition-colors" />
+                           </div>
+                           
+                           {/* Content Section - Smaller Padding/Rounding */}
+                           <div className="flex-1 min-w-0 bg-white/[0.02] p-3 rounded-2xl border border-transparent transition-all group-hover:border-white/5 group-hover:bg-white/5">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                 <div className="pt-0.5">
+                                    <p className="text-[10px] leading-relaxed tracking-tight">
+                                       <span className="font-black text-foreground uppercase tracking-[0.05em]">{log.user}</span>
+                                       {" "}
+                                       <span className="font-semibold text-muted-foreground/60">{log.action}</span>
+                                       {" "}
+                                       <span className="font-black text-indigo-500/70 lowercase tracking-widest">{log.type}</span>
+                                    </p>
+                                    <h3 className="text-sm font-black tracking-tighter mt-0.5 text-foreground/90 group-hover:text-indigo-500 transition-colors">
+                                       {log.target}
+                                    </h3>
+                                 </div>
+                                 
+                                 <div className="flex flex-col items-end gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                                    <div className="h-8 w-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-600/30">
+                                       <ArrowRight className="h-4 w-4" />
+                                    </div>
+                                 </div>
+                              </div>
+                              
+                              <div className="mt-2 flex items-center gap-3 md:hidden">
+                                 <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest flex items-center gap-2">
+                                    <Clock className="h-2.5 w-2.5" /> {log.time}
+                                 </span>
+                              </div>
+                           </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+
+                  {filteredLogs.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-40 text-center space-y-6">
+                       <div className="h-20 w-20 rounded-[2.5rem] bg-secondary/5 flex items-center justify-center relative">
+                          <div className="absolute inset-0 rounded-[2.5rem] border-2 border-indigo-500/10 animate-ping opacity-10" />
+                          <Activity className="h-8 w-8 text-muted-foreground/20" />
+                       </div>
+                       <div className="space-y-1">
+                          <h3 className="font-black text-lg uppercase tracking-widest text-foreground/80">No Records Found</h3>
+                          <p className="text-xs text-muted-foreground font-semibold max-w-xs mx-auto">The audit trail is currently empty for the selected filters.</p>
+                       </div>
+                    </div>
+                  )}
+               </div>
+            </ScrollArea>
+         </div>
       </div>
     </div>
   );

@@ -43,6 +43,8 @@ import MemberTasksPage from "@/pages/member/MemberTasksPage";
 import TimeTrackingPage from "@/pages/member/TimeTrackingPage";
 import TaskUpdatesPage from "@/pages/member/TaskUpdatesPage";
 
+import SetPasswordPage from "@/pages/SetPasswordPage";
+
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -95,6 +97,7 @@ const App = () => {
                 <Route path="/feedback" element={<FeedbackPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/set-password" element={<SetPasswordPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLayout>
