@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, FolderKanban, CheckSquare, Users, Shield,
   BarChart3, Clock, FileText, Settings, ChevronDown, LogOut,
-  UserCircle, Eye, UserPlus, Kanban, Bell, LineChart
+  UserCircle, Eye, UserPlus, Kanban, Bell, LineChart, History
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useRole, UserRole } from "@/contexts/RoleContext";
@@ -44,6 +44,7 @@ const navByRole: Record<UserRole, { label: string; items: { title: string; url: 
       { title: "Team Assignment", url: "/manager/assignments", icon: UserPlus },
       { title: "Progress Tracking", url: "/manager/tracking", icon: Kanban },
       { title: "Status Reports", url: "/manager/reports", icon: FileText },
+      { title: "Audit Logs", url: "/audit-logs", icon: History },
     ]},
   ],
   user: [
@@ -92,33 +93,43 @@ export function AppSidebar() {
         )}
       </SidebarHeader>
 
-      <SidebarContent className="px-2">
+      <SidebarContent className="px-3">
         {groups.map((group) => (
-          <SidebarGroup key={group.label}>
-            {!collapsed && <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-muted font-medium">{group.label}</SidebarGroupLabel>}
+          <SidebarGroup key={group.label} className="py-1">
+            {!collapsed && (
+              <SidebarGroupLabel className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/50 px-2 mb-1">
+                {group.label}
+              </SidebarGroupLabel>
+            )}
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end={item.url === "/"}
-                        className="flex items-center gap-3 px-3 py-2 text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-all duration-200 rounded-xl group relative overflow-hidden"
-                        activeClassName="bg-primary/10 text-primary font-bold shadow-[inset_0_0_0_1px_rgba(var(--primary),0.1)]"
-                      >
-                        <item.icon className="h-4 w-4 shrink-0 transition-transform group-hover:scale-110" />
-                        {!collapsed && <span className="text-[13px]">{item.title}</span>}
-                        {!collapsed && item.url === location.pathname && (
-                          <motion.div 
-                            layoutId="active-nav"
-                            className="absolute left-0 w-1 h-4 bg-primary rounded-r-full"
-                          />
-                        )}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {group.items.map((item) => {
+                  const isActive = item.url === "/"
+                    ? location.pathname === "/"
+                    : location.pathname.startsWith(item.url);
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          end={item.url === "/"}
+                          className={[
+                            "flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150 group w-full",
+                            isActive
+                              ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20 font-semibold"
+                              : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground font-medium",
+                          ].join(" ")}
+                          activeClassName=""
+                        >
+                          <item.icon className={`h-4 w-4 shrink-0 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                          {!collapsed && (
+                            <span className="text-[13px] leading-none truncate">{item.title}</span>
+                          )}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

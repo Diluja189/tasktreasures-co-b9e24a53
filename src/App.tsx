@@ -76,6 +76,7 @@ const App = () => {
                 <Route path="/manager/assignments" element={<TeamAssignmentPage />} />
                 <Route path="/manager/tracking" element={<ProgressTrackingPage />} />
                 <Route path="/manager/reports" element={<StatusReportsPage />} />
+                <Route path="/manager/notifications" element={<NotificationsPage />} />
 
                 {/* Team Member Specific Routes */}
                 <Route path="/member/tasks" element={<MemberTasksPage />} />

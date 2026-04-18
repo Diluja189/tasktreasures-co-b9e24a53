@@ -164,7 +164,7 @@ const NotificationsPage = () => {
   const filters = ["All", "Tasks", "Managers", "Alerts", "Security"];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10 pb-20">
+    <div className="max-w-5xl mx-auto space-y-10 pb-20 pt-10 px-6">
       {/* Premium Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
@@ -256,7 +256,7 @@ const NotificationsPage = () => {
                               ? "bg-amber-500/10 border-amber-500/20 text-amber-500"
                               : "bg-slate-500/5 border-slate-500/10 text-slate-400"
                           }`}>
-                            <n.icon className="h-4.5 w-4.5" />
+                            <n.icon className="h-5 w-5" />
                           </div>
 
                           <div className="flex-1 min-w-0 pt-0.5">

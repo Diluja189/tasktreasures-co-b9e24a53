@@ -38,44 +38,46 @@ export default function StatusReportsPage() {
   };
 
   return (
-    <div className="space-y-8 pb-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="max-w-7xl mx-auto space-y-8 pb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/50 pb-8">
         <div>
-           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent italic underline decoration-indigo-500/20 underline-offset-8">
+           <h1 className="text-3xl font-black tracking-tight text-slate-900">
              Strategic Status Assessment
            </h1>
-           <p className="text-muted-foreground mt-2">Finalize and submit operational throughput audits to the Administrative command layer.</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-2 rounded-xl" onClick={() => toast.info("Syncing latest lifecycle telemetry...")}>
+        <Button variant="outline" size="sm" className="gap-2 rounded-xl h-10 border-border/60 font-bold text-xs text-slate-600" onClick={() => toast.info("Syncing latest lifecycle telemetry...")}>
            <RefreshCw className="h-4 w-4" /> Sync Telemetry
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Report Compilation Console */}
         <div className="lg:col-span-8 space-y-6">
-           <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm rounded-[2.5rem] overflow-hidden border border-indigo-500/5">
-              <CardHeader className="bg-indigo-600 p-8 text-white border-none">
+           <Card className="border border-border/50 shadow-sm bg-white rounded-2xl overflow-hidden">
+              <CardHeader className="bg-indigo-600 p-6 text-white shrink-0">
                  <div className="flex items-center justify-between">
-                    <div>
-                       <CardTitle className="text-2xl font-bold tracking-tight flex items-center gap-3">
-                          <ClipboardCheck className="h-6 w-6" /> Assessment Composer
-                       </CardTitle>
-                       <CardDescription className="text-indigo-100/70">Compile high-precision status intelligence for review.</CardDescription>
+                    <div className="flex items-center gap-4">
+                       <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
+                          <ClipboardCheck className="h-5 w-5 text-white" />
+                       </div>
+                       <div>
+                          <CardTitle className="text-xl font-bold tracking-tight">Assessment Composer</CardTitle>
+                          <CardDescription className="text-indigo-100/70 text-xs font-medium">Compile high-precision status intelligence</CardDescription>
+                       </div>
                     </div>
-                    <Badge variant="outline" className="border-white/20 text-white bg-white/10 px-4 py-1.5 rounded-full font-black text-[10px] tracking-widest uppercase">Draft Mode</Badge>
+                    <Badge variant="outline" className="border-white/20 text-white bg-white/5 px-3 py-1 rounded-lg font-bold text-[10px] tracking-widest uppercase">Draft Mode</Badge>
                  </div>
               </CardHeader>
-              <CardContent className="p-8 space-y-8">
-                 <div className="space-y-4">
-                    <label className="text-[11px] font-black uppercase text-muted-foreground tracking-[0.2em]">Select Active Project</label>
+              <CardContent className="p-6 space-y-8">
+                 <div className="space-y-3">
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Select Active Project</label>
                     <Select value={selectedProject} onValueChange={setSelectedProject}>
-                       <SelectTrigger className="h-14 rounded-2xl border-none bg-secondary/30 text-lg font-bold px-6 shadow-inner">
+                       <SelectTrigger className="h-12 rounded-xl border border-border/50 bg-slate-50/50 px-4 font-bold text-sm text-slate-700">
                           <SelectValue placeholder="Target Project Stream" />
                        </SelectTrigger>
-                       <SelectContent className="rounded-[2rem] border-none shadow-2xl p-2">
+                       <SelectContent className="rounded-xl border-border/50 shadow-xl">
                           {reportableProjects.map(p => (
-                            <SelectItem key={p.id} value={p.id} className="rounded-xl py-3 cursor-pointer">
+                            <SelectItem key={p.id} value={p.id} className="rounded-lg py-2.5 cursor-pointer font-medium text-sm">
                                {p.name}
                             </SelectItem>
                           ))}
@@ -95,38 +97,38 @@ export default function StatusReportsPage() {
                           {/* Telemetry Preview */}
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                              {[
-                               { label: "Finalized", val: projectData.completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-500/10" },
-                               { label: "Active", val: projectData.inProgress, icon: Clock, color: "text-indigo-600", bg: "bg-indigo-500/10" },
-                               { label: "Risk Delta", val: projectData.delayed, icon: AlertTriangle, color: "text-rose-600", bg: "bg-rose-500/10" },
+                               { label: "Finalized", val: projectData.completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
+                               { label: "Active", val: projectData.inProgress, icon: Clock, color: "text-indigo-600", bg: "bg-indigo-50" },
+                               { label: "Risk Delta", val: projectData.delayed, icon: AlertTriangle, color: "text-rose-600", bg: "bg-rose-50" },
                              ].map((stat, i) => (
-                               <div key={i} className={`p-5 rounded-3xl ${stat.bg} border-2 border-white/50 flex flex-col items-center justify-center text-center group transition-all hover:scale-[1.02]`}>
-                                  <stat.icon className={`h-6 w-6 ${stat.color} mb-3`} />
-                                  <p className="text-2xl font-black tracking-tighter leading-none">{stat.val}</p>
-                                  <p className="text-[9px] font-bold uppercase text-muted-foreground mt-1.5 tracking-widest">{stat.label}</p>
+                               <div key={i} className={`p-6 rounded-2xl ${stat.bg} border border-border/10 flex flex-col items-center justify-center text-center transition-all hover:shadow-inner`}>
+                                  <stat.icon className={`h-5 w-5 ${stat.color} mb-3`} />
+                                  <p className="text-2xl font-black text-slate-900 leading-none">{stat.val}</p>
+                                  <p className="text-[10px] font-bold uppercase text-slate-400 mt-2 tracking-widest">{stat.label}</p>
                                 </div>
                              ))}
                           </div>
 
                           <div className="space-y-6">
                              <div className="space-y-3">
-                                <label className="text-[11px] font-black uppercase text-muted-foreground tracking-[0.2em] flex items-center gap-2">
-                                   <Zap className="h-4 w-4 text-rose-500" /> Risks, Blockers & Impediments
+                                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                   <Zap className="h-3.5 w-3.5 text-rose-500" /> Risks, Blockers & Impediments
                                 </label>
                                 <Textarea 
                                   placeholder="Document any strategic or technical slippage risk..." 
-                                  className="rounded-[2rem] border-none bg-secondary/30 min-h-[120px] p-6 font-bold shadow-inner placeholder:italic"
+                                  className="rounded-xl border border-border/50 bg-slate-50/30 min-h-[120px] p-4 text-sm font-semibold text-slate-700 placeholder:text-slate-400"
                                   value={risks}
                                   onChange={(e) => setRisks(e.target.value)}
                                 />
                              </div>
 
                              <div className="space-y-3">
-                                <label className="text-[11px] font-black uppercase text-muted-foreground tracking-[0.2em] flex items-center gap-2">
-                                   <MessageSquare className="h-4 w-4 text-indigo-500" /> Executive Summary & Managerial Notes
+                                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                                   <MessageSquare className="h-3.5 w-3.5 text-indigo-500" /> Executive Summary & Managerial Notes
                                 </label>
                                 <Textarea 
                                   placeholder="Provide descriptive assessment of current implementation velocity..." 
-                                  className="rounded-[2rem] border-none bg-secondary/30 min-h-[150px] p-6 font-medium shadow-inner"
+                                  className="rounded-xl border border-border/50 bg-slate-50/30 min-h-[150px] p-4 text-sm font-medium text-slate-700 placeholder:text-slate-400"
                                   value={managerNote}
                                   onChange={(e) => setManagerNote(e.target.value)}
                                 />
@@ -135,28 +137,28 @@ export default function StatusReportsPage() {
 
                           <div className="pt-4 flex flex-col sm:flex-row gap-4">
                              <Button 
-                               className="flex-1 h-16 rounded-[1.2rem] bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-600/30 font-black text-xs uppercase tracking-[0.2em] gap-3 border-none transition-all active:scale-95"
+                               className="flex-1 h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 font-bold text-xs uppercase tracking-widest gap-2"
                                onClick={handleSubmitReport}
                              >
-                                <Send className="h-5 w-5" /> Submit to Admin
+                                <Send className="h-4 w-4" /> Submit to Admin
                              </Button>
                              <Button 
                                variant="outline" 
-                               className="h-16 px-8 rounded-[1.2rem] border-indigo-500/20 bg-white hover:bg-indigo-50 text-indigo-600 font-black text-xs uppercase tracking-[0.2em] gap-3 transition-all active:scale-95 border-2 group"
+                               className="h-12 px-8 rounded-xl border-border/60 bg-white hover:bg-slate-50 text-slate-600 font-bold text-xs uppercase tracking-widest gap-2"
                                onClick={() => toast.info("Exporting Assessment Data...")}
                              >
-                                <Download className="h-5 w-5 group-hover:-translate-y-0.5 transition-transform" /> Export Summary
+                                <Download className="h-4 w-4" /> Export Summary
                              </Button>
                           </div>
                        </motion.div>
                     ) : (
-                       <div className="py-20 text-center space-y-6 opacity-40">
-                          <div className="h-24 w-24 rounded-full bg-secondary/50 flex items-center justify-center mx-auto border-4 border-dashed border-muted-foreground/20">
-                             <FileBarChart className="h-10 w-10 text-muted-foreground" />
+                       <div className="py-24 text-center flex flex-col items-center justify-center space-y-6">
+                          <div className="h-20 w-20 rounded-2xl bg-slate-50 flex items-center justify-center border border-border/50">
+                             <FileBarChart className="h-8 w-8 text-slate-300" />
                           </div>
                           <div>
-                             <p className="text-lg font-black italic">Awaiting Project Selection</p>
-                             <p className="text-xs font-bold uppercase tracking-widest mt-1">Select a project stream above to begin compiling intelligence.</p>
+                             <p className="text-lg font-bold text-slate-900">Awaiting Project Selection</p>
+                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5">Select a project stream above to begin compilation.</p>
                           </div>
                        </div>
                     )}
@@ -167,57 +169,60 @@ export default function StatusReportsPage() {
 
         {/* Audit History & Guidelines Sidebar */}
         <div className="lg:col-span-4 space-y-6">
-           <Card className="border-none shadow-md bg-white rounded-3xl overflow-hidden">
-              <CardHeader className="p-6 border-b border-secondary/20 flex flex-row items-center justify-between">
-                 <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    <History className="h-4 w-4 text-indigo-500" /> Recent Submissions
+           <Card className="border border-border/50 shadow-sm bg-white rounded-2xl overflow-hidden">
+              <CardHeader className="p-6 border-b border-border/40 flex flex-row items-center justify-between">
+                 <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 leading-none">
+                    <History className="h-3.5 w-3.5 text-indigo-500" /> Recent Submissions
                  </CardTitle>
-                 <ArrowUpRight className="h-4 w-4 text-muted-foreground/30" />
+                 <ArrowUpRight className="h-4 w-4 text-slate-300" />
               </CardHeader>
               <CardContent className="p-0">
-                 <div className="divide-y divide-secondary/20">
+                 <div className="divide-y divide-border/40">
                     {[
                       { project: "Infrastructure Prep", date: "Apr 12, 11:45 AM", state: "Verified" },
                       { project: "Beta Testing Stream", date: "Apr 08, 09:30 AM", state: "Awaiting Review" },
                       { project: "Cloud Migration", date: "Apr 04, 04:15 PM", state: "Verified" },
                     ].map((h, i) => (
-                      <div key={i} className="p-5 hover:bg-indigo-50/30 transition-colors group cursor-pointer">
-                         <div className="flex justify-between items-start mb-1">
-                            <p className="font-bold text-sm italic group-hover:text-indigo-600 transition-colors">{h.project}</p>
-                            <Badge className={`${h.state === 'Verified' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'} border-none text-[7px] font-black uppercase h-4 px-1 leading-none shadow-none`}>
+                      <div key={i} className="p-6 hover:bg-slate-50 transition-colors group cursor-pointer">
+                         <div className="flex justify-between items-center mb-2">
+                            <p className="font-bold text-sm text-slate-800 group-hover:text-indigo-600 transition-colors">{h.project}</p>
+                            <Badge className={`${h.state === 'Verified' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'} border text-[8px] font-bold uppercase h-5 px-1.5 leading-none shadow-none`}>
                                {h.state}
                             </Badge>
                          </div>
-                         <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter flex items-center gap-1.5"><TimerOff className="h-3 w-3" /> Submitted {h.date}</p>
+                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter flex items-center gap-2"><Clock className="h-3 w-3" /> {h.date}</p>
                       </div>
                     ))}
                  </div>
-                 <Button variant="ghost" className="w-full h-12 rounded-none text-[10px] font-black uppercase tracking-widest bg-secondary/10 group gap-2">
-                    Open Intelligence Vault <ChevronRight className="h-3 w-3 group-hover:translate-x-1 transition-transform" />
+                 <Button variant="ghost" className="w-full h-12 rounded-none text-[9px] font-bold uppercase tracking-widest bg-slate-50/50 hover:bg-slate-100 text-slate-500 gap-2 border-t border-border/40">
+                    View Intelligence Vault <ChevronRight className="h-3 w-3" />
                  </Button>
               </CardContent>
            </Card>
 
-           <Card className="border-none shadow-md bg-indigo-600 text-white rounded-[2rem] overflow-hidden p-8 relative group">
-              <div className="absolute -bottom-4 -left-4 opacity-10 pointer-events-none group-hover:scale-110 transition-transform">
+           <Card className="border-none shadow-md bg-indigo-600 text-white rounded-2xl overflow-hidden p-8 relative group">
+              <div className="absolute -bottom-4 -left-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
                  <ShieldCheck size={180} />
               </div>
               <div className="relative space-y-6">
-                 <div className="h-12 w-12 rounded-2xl bg-white/20 border border-white/20 flex items-center justify-center">
-                    <Zap className="h-6 w-6 text-white" />
+                 <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
+                    <Zap className="h-5 w-5 text-white" />
                  </div>
-                 <h4 className="text-xl font-bold tracking-tight italic">Effective Status Reporting</h4>
+                 <div>
+                    <h4 className="text-xl font-bold tracking-tight">Status Reporting</h4>
+                    <p className="text-[10px] text-indigo-100/60 font-bold uppercase tracking-widest mt-1">Operational Guidelines</p>
+                 </div>
                  <div className="space-y-4">
                     <p className="text-xs leading-relaxed text-indigo-100/80 font-medium">
-                       Professional status reports should quantify velocity deltas. Ensure "Risk Delta" is substantiated with clear technical blockers to facilitate Administrative intervention.
+                       Professional status reports should quantify velocity deltas. Ensure "Risk Delta" is substantiated with clear technical blockers.
                     </p>
-                    <div className="space-y-2">
-                       <div className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-emerald-300" /> <span className="text-[10px] font-bold tracking-wider">Quantify Throughput</span></div>
-                       <div className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-emerald-300" /> <span className="text-[10px] font-bold tracking-wider">Identify Clear Blockers</span></div>
-                       <div className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-emerald-300" /> <span className="text-[10px] font-bold tracking-wider">Predictive Timelines</span></div>
+                    <div className="space-y-3">
+                       <div className="flex items-center gap-3"><CheckCircle2 className="h-3.5 w-3.5 text-indigo-300" /> <span className="text-[10px] font-bold tracking-wider">Quantify Throughput</span></div>
+                       <div className="flex items-center gap-3"><CheckCircle2 className="h-3.5 w-3.5 text-indigo-300" /> <span className="text-[10px] font-bold tracking-wider">Identify Clear Blockers</span></div>
+                       <div className="flex items-center gap-3"><CheckCircle2 className="h-3.5 w-3.5 text-indigo-300" /> <span className="text-[10px] font-bold tracking-wider">Predictive Timelines</span></div>
                     </div>
                  </div>
-                 <Button variant="outline" className="w-full h-11 border-white/20 bg-white/10 hover:bg-white/20 text-white font-black uppercase text-[10px] tracking-widest rounded-xl border-dashed">
+                 <Button variant="outline" className="w-full h-10 border-white/20 bg-white/10 hover:bg-white/20 text-white font-bold uppercase text-[9px] tracking-widest rounded-xl transition-all">
                     Audit Handbook
                  </Button>
               </div>
