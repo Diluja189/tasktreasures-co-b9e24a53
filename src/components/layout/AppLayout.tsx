@@ -5,6 +5,7 @@ import { useRole } from "@/contexts/RoleContext";
 import { Bell, Search, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 const roleLabels: Record<string, string> = {
   admin:   "Administrator",
@@ -68,13 +69,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </button>
 
               {/* Notifications */}
-              <button
-                className="h-9 w-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-gray-100 hover:text-foreground transition-colors relative"
-                aria-label="Notifications"
-              >
-                <Bell className="h-4.5 w-4.5" style={{ height: 18, width: 18 }} />
-                <span className="absolute top-2 right-2 h-1.5 w-1.5 bg-rose-500 rounded-full" />
-              </button>
+              <NotificationDropdown />
 
               {/* Divider */}
               <div className="h-5 w-px bg-border/60 mx-2" />

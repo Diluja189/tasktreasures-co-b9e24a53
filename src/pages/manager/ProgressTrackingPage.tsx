@@ -61,12 +61,9 @@ export default function ProgressTrackingPage() {
     <div className="space-y-8 pb-12">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex flex-col justify-center">
-           <h1 className="text-2xl font-bold tracking-tight text-foreground">
-             Operational Velocity Tracker
-           </h1>
-           <p className="text-sm text-muted-foreground mt-1 font-medium">Monitor implementation depth and timeline adherence across your projects.</p>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Operational Velocity Tracker
+        </h1>
         
         <div className="flex items-center gap-4">
            <Button variant="outline" size="sm" className="gap-2 rounded-xl h-10 px-4 border border-border bg-white shadow-sm font-bold text-xs" onClick={() => toast.info("Recalculating project health...")}>
@@ -210,72 +207,74 @@ export default function ProgressTrackingPage() {
 
       {/* Dynamic Viewport */}
       {viewMode === 'kanban' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
-           {kanbanColumns.map(column => (
-             <div key={column} className="flex flex-col h-full space-y-4">
-                <div className="flex items-center justify-between px-2">
-                   <div className="flex items-center gap-2">
-                      <div className={`h-2.5 w-2.5 rounded-full ${column === 'Delayed' ? 'bg-rose-500' : (column === 'Completed' ? 'bg-emerald-500' : column === 'Not Started' ? 'bg-slate-400' : 'bg-indigo-500')}`} />
-                      <p className="text-sm font-bold text-foreground">{column}</p>
-                   </div>
-                   <Badge variant="secondary" className="bg-secondary/60 text-xs font-bold px-2.5 py-0.5 rounded-md border border-border/60 shadow-sm">
-                     {filteredItems.filter(t => t.status === column).length}
-                   </Badge>
-                </div>
-                
-                <div className="flex flex-col gap-4 flex-1 bg-secondary/10 rounded-2xl p-4 border border-border/50 min-h-[500px]">
-                   {filteredItems.filter(t => t.status === column).map((item, i) => {
-                      const isDelayed = item.status === 'Delayed';
-                      const isCompleted = item.status === 'Completed';
-                      return (
-                         <motion.div
-                           key={item.id}
-                           initial={{ opacity: 0, y: 10 }}
-                           animate={{ opacity: 1, y: 0 }}
-                           transition={{ delay: i * 0.05 }}
-                         >
-                            <Card className={`shadow-sm bg-white rounded-xl transition-all ${isDelayed ? 'border-2 border-rose-400 shadow-rose-100' : 'border border-border/50 hover:border-indigo-300'}`}>
-                               <CardHeader className="p-5 pb-3">
-                                  <div className="flex justify-between items-start mb-3">
-                                     <p className="text-[10px] font-bold uppercase text-muted-foreground leading-none">{item.project}</p>
-                                     <Badge className={`${item.priority === 'High' ? 'bg-rose-50 text-rose-600 border-rose-200' : item.priority === 'Medium' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-indigo-50 text-indigo-600 border-indigo-200'} text-[10px] px-2 py-0.5 leading-none font-bold border rounded-md shadow-sm`}>{item.priority}</Badge>
-                                  </div>
-                                  <CardTitle className="text-sm font-bold text-foreground leading-tight">{item.name}</CardTitle>
-                               </CardHeader>
-                               <CardContent className="p-5 pt-0 space-y-4">
-                                  <div className="flex items-center justify-between">
-                                     <div className="flex items-center gap-3">
-                                        <div className="h-6 w-6 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center text-[10px] font-bold border border-indigo-100 shrink-0">
-                                           {item.assignee.split(' ').map(n=>n[0]).join('')}
-                                        </div>
-                                        <span className="text-xs font-semibold text-muted-foreground">{item.assignee}</span>
-                                     </div>
-                                     <span className={`text-[11px] font-bold flex items-center gap-1.5 ${isDelayed ? 'text-rose-600' : 'text-slate-500'}`}>
-                                        <Calendar className="h-3.5 w-3.5" /> {item.deadline}
-                                     </span>
-                                  </div>
-                                  {column !== 'Not Started' && (
-                                    <div className="space-y-2">
-                                       <div className="flex justify-between text-[11px] font-bold text-muted-foreground">
-                                          <span>Progress</span>
-                                          <span className={isDelayed ? 'text-rose-600' : isCompleted ? 'text-emerald-600' : 'text-indigo-600'}>{item.progress}%</span>
-                                       </div>
-                                       <Progress value={item.progress} className={`h-1.5 rounded-full bg-secondary/80 ${isDelayed ? '[&>div]:bg-rose-500' : (item.progress > 80 ? '[&>div]:bg-emerald-500' : '[&>div]:bg-indigo-500')}`} />
-                                    </div>
-                                  )}
-                                  <div className="pt-2">
-                                      <Button variant="outline" size="sm" className={`w-full h-9 rounded-xl text-xs font-bold gap-2 border-border/60 ${isDelayed ? 'text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200' : 'text-indigo-600 hover:bg-indigo-50'}`} onClick={() => toast.info("Opening audit context...")}>
-                                         Inspect <ArrowUpRight className="h-3.5 w-3.5" />
-                                      </Button>
-                                  </div>
-                               </CardContent>
-                            </Card>
-                         </motion.div>
-                      );
-                   })}
-                </div>
-             </div>
-           ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full pb-10">
+           {[...filteredItems].sort((a, b) => {
+              const priorityWeights: Record<string, number> = { "High": 3, "Medium": 2, "Low": 1 };
+              return (priorityWeights[b.priority] || 0) - (priorityWeights[a.priority] || 0);
+           }).map((item, i) => {
+              const isDelayed = item.status === 'Delayed';
+              const isCompleted = item.status === 'Completed';
+              return (
+                 <motion.div
+                   key={item.id}
+                   initial={{ opacity: 0, y: 10 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   transition={{ delay: i * 0.05 }}
+                   className="w-full h-full"
+                 >
+                    <Card className={`w-full h-[320px] shadow-sm bg-white rounded-xl transition-all flex flex-col ${isDelayed ? 'bg-rose-50/40 border-rose-200 border text-rose-900' : 'border border-border/40 hover:border-indigo-300/50 hover:shadow-md hover:shadow-indigo-100/30'}`}>
+                       <CardContent className="p-6 flex flex-col items-start justify-start flex-1 h-full w-full">
+                          {/* Project Section Heading (Metadata style) */}
+                          <div className="mb-2 shrink-0">
+                             <p className="text-[10px] font-bold text-indigo-600/80 uppercase tracking-widest leading-none">{item.project}</p>
+                          </div>
+
+                          {/* Task Title */}
+                          <div className="mb-3 shrink-0 h-12">
+                             <h3 className="text-base font-bold text-slate-900 leading-tight line-clamp-2">{item.name}</h3>
+                          </div>
+
+                          {/* Horizontal Badge Row */}
+                          <div className="flex items-center justify-start gap-2 mb-4 shrink-0">
+                             <Badge className={`${item.priority === 'High' ? 'bg-rose-50 text-rose-600 border-rose-100' : item.priority === 'Medium' ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100'} text-[10px] px-2 py-0.5 font-bold border rounded shadow-none`}>{item.priority}</Badge>
+                             <Badge variant="outline" className={`text-[10px] font-bold px-2 py-0.5 border rounded shadow-none ${isDelayed ? 'bg-rose-50/50 text-rose-600 border-rose-200' : isCompleted ? 'bg-emerald-50/50 text-emerald-600 border-emerald-200' : 'bg-slate-50/50 text-slate-600 border-slate-200'}`}>{item.status}</Badge>
+                          </div>
+
+                          {/* Owner Selection Row */}
+                          <div className="flex items-center justify-start gap-3 mb-5 p-2 bg-slate-50/60 rounded-xl h-10 border border-slate-100 w-full shrink-0">
+                             <div className="h-6 w-6 rounded-full bg-white text-indigo-600 flex items-center justify-center text-[10px] font-bold border border-slate-200 shrink-0">
+                               {item.assignee.split(' ').map(n=>n[0]).join('')}
+                             </div>
+                             <div className="flex flex-1 items-center justify-between">
+                                <span className="text-xs font-semibold text-slate-700">{item.assignee}</span>
+                                <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-md border border-slate-100 shrink-0 uppercase tracking-tighter">3 units</span>
+                             </div>
+                          </div>
+
+                          {/* Dual Meta Statistics Row */}
+                          <div className="grid grid-cols-2 gap-4 mb-4 w-full shrink-0">
+                             <div className="flex flex-col items-start">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Target</span>
+                                <span className={`text-xs font-semibold ${isDelayed ? 'text-rose-600' : 'text-slate-700'}`}>{item.deadline}</span>
+                             </div>
+                             <div className="flex flex-col items-start border-l border-slate-100 pl-4">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Budget</span>
+                                <span className="text-xs font-semibold text-slate-700">{item.priority === 'High' ? '32' : '16'}h</span>
+                             </div>
+                          </div>
+
+                          {/* Fixed Bottom Action */}
+                          <div className="w-full mt-auto pt-4 border-t border-slate-100 shrink-0">
+                             <Button variant="ghost" size="sm" className="w-full text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/50 justify-between px-1 h-8 group" onClick={() => toast.info("Opening audit log...")}>
+                               <span>Unit Audit Log</span>
+                               <ArrowUpRight className="w-4 h-4 text-indigo-400 group-hover:text-indigo-600 transition-colors" />
+                             </Button>
+                          </div>
+                       </CardContent>
+                    </Card>
+                 </motion.div>
+              );
+           })}
         </div>
       ) : (
         <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden">
