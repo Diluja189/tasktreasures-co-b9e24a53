@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   Filter, Search, RefreshCw, 
   AlertTriangle, CheckCircle2, 
   LayoutGrid, List, Activity, 
   GanttChart, Calendar, ArrowUpRight,
   ShieldAlert, Timer, ChevronRight,
-  Clock
+  Clock, MoreVertical, Edit3, Lock, Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -17,18 +17,30 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
-const trackingItems = [
-  { id: "T1", name: "OAuth Integration", project: "Security Infrastructure", status: "In Progress", progress: 65, deadline: "Apr 20", assignee: "Sarah Chen", priority: "High" },
-  { id: "T2", name: "S3 Bucket Setup", project: "Cloud Migration", status: "Completed", progress: 100, deadline: "Apr 15", assignee: "David Kim", priority: "Medium" },
-  { id: "T3", name: "UI Polish", project: "SaaS Dashboard", status: "Delayed", progress: 30, deadline: "Apr 12", assignee: "Mike Chen", priority: "High" },
-  { id: "T4", name: "DB Indexing", project: "Cloud Migration", status: "In Progress", progress: 85, deadline: "Apr 22", assignee: "Sarah Chen", priority: "Medium" },
-  { id: "T5", name: "Docs Audit", project: "Legacy Cleanup", status: "Not Started", progress: 0, deadline: "May 05", assignee: "Anna Bell", priority: "Low" },
-];
-
-const projectHighlights = [
-  { name: "Cloud Migration", total: 12, completed: 8, delayed: 0, health: 92 },
-  { name: "SaaS Dashboard", total: 8, completed: 3, delayed: 2, health: 68 },
+const INITIAL_TRACKING_ITEMS = [
+  { id: "T1", name: "OAuth Integration", project: "Security Infrastructure", status: "In Progress", progress: 65, deadline: "Apr 20", assignee: "Sarah Chen", priority: "High", description: "Implement OAuth2.0 authentication flow.", isFinal: false },
+  { id: "T2", name: "S3 Bucket Setup", project: "Cloud Migration", status: "Completed", progress: 100, deadline: "Apr 15", assignee: "David Kim", priority: "Medium", description: "Configuring S3 buckets for storage.", isFinal: false },
+  { id: "T3", name: "UI Polish", project: "SaaS Dashboard", status: "Delayed", progress: 30, deadline: "Apr 12", assignee: "Mike Chen", priority: "High", description: "Final UI refinements for the dashboard.", isFinal: false },
+  { id: "T4", name: "DB Indexing", project: "Cloud Migration", status: "In Progress", progress: 85, deadline: "Apr 22", assignee: "Sarah Chen", priority: "Medium", description: "Optimizing database queries.", isFinal: false },
+  { id: "T5", name: "Docs Audit", project: "Legacy Cleanup", status: "Not Started", progress: 0, deadline: "May 05", assignee: "Anna Bell", priority: "Low", description: "Auditing internal documentation.", isFinal: false },
 ];
 
 const statusStyles = {
@@ -36,26 +48,106 @@ const statusStyles = {
   "In Progress": "bg-indigo-500/10 text-indigo-600 border-none",
   "Not Started": "bg-slate-500/10 text-slate-600 border-none",
   "Delayed": "bg-rose-500/10 text-rose-600 border-none animate-pulse",
+  "Final": "bg-slate-900 text-white border-none",
 };
 
 export default function ProgressTrackingPage() {
+  const [items, setItems] = useState(INITIAL_TRACKING_ITEMS);
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
   const [projectFilter, setProjectFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const kanbanColumns = ["Not Started", "In Progress", "Completed", "Delayed"];
+  // Action States
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isFinalConfirmOpen, setIsFinalConfirmOpen] = useState(false);
+  const [isPurgeConfirmOpen, setIsPurgeConfirmOpen] = useState(false);
+  const [purgeInput, setPurgeInput] = useState("");
+  const [targetItemId, setTargetItemId] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const filteredItems = trackingItems.filter(item => {
+  const filteredItems = useMemo(() => items.filter(item => {
     const matchesProject = projectFilter === "All" || item.project === projectFilter;
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.assignee.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesProject && matchesSearch;
-  });
+  }), [items, projectFilter, searchQuery]);
 
-  const totalProjects = new Set(trackingItems.map(i => i.project)).size;
-  const activeTasks = trackingItems.length;
-  const completedTasks = trackingItems.filter(i => i.status === "Completed").length;
-  const delayedTasks = trackingItems.filter(i => i.status === "Delayed").length;
+  const projectHighlights = useMemo(() => {
+    const projects = Array.from(new Set(items.map(i => i.project)));
+    return projects.map(proj => {
+      const projItems = items.filter(i => i.project === proj);
+      const total = projItems.length;
+      const completed = projItems.filter(i => i.status === "Completed" || i.status === "Final").length;
+      const delayed = projItems.filter(i => i.status === "Delayed").length;
+      const health = total > 0 ? Math.round((completed / total) * 100) : 0;
+      return { name: proj, total, completed, delayed, health };
+    });
+  }, [items]);
+
+  const totalProjects = projectHighlights.length;
+  const activeTasks = items.length;
+  const completedTasks = items.filter(i => i.status === "Completed" || i.status === "Final").length;
+  const delayedTasks = items.filter(i => i.status === "Delayed").length;
+
+  // Handlers
+  const handleEditClick = (item: any) => {
+    if (item.isFinal) {
+      toast.error("Fixed State Error", { description: "Finalized units cannot be modified." });
+      return;
+    }
+    setEditingItem({ ...item });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    setTimeout(() => {
+      setItems(prev => prev.map(i => i.id === editingItem.id ? editingItem : i));
+      setIsEditDialogOpen(false);
+      setIsProcessing(false);
+      toast.success("Unit Synchronized", { description: `${editingItem.name} has been successfully updated.` });
+    }, 800);
+  };
+
+  const handleMarkFinalClick = (id: string) => {
+    setTargetItemId(id);
+    setIsFinalConfirmOpen(true);
+  };
+
+  const confirmMarkFinal = () => {
+    setIsProcessing(true);
+    setTimeout(() => {
+      setItems(prev => prev.map(i => i.id === targetItemId ? { ...i, isFinal: true, status: "Final", progress: 100 } : i));
+      setIsFinalConfirmOpen(false);
+      setIsProcessing(false);
+      toast.success("Unit Immutable", { 
+        description: "The unit has been locked and marked as Final.",
+        icon: <ShieldAlert className="h-4 w-4" />
+      });
+    }, 1000);
+  };
+
+  const handlePurgeClick = (id: string) => {
+    setTargetItemId(id);
+    setIsPurgeConfirmOpen(true);
+    setPurgeInput("");
+  };
+
+  const confirmPurge = () => {
+    if (purgeInput !== "DELETE") {
+      toast.error("Confirmation Invalid", { description: "Please type DELETE to proceed." });
+      return;
+    }
+    setIsProcessing(true);
+    setTimeout(() => {
+      setItems(prev => prev.filter(i => i.id !== targetItemId));
+      setIsPurgeConfirmOpen(false);
+      setIsProcessing(false);
+      toast.error("Unit Purged", { description: "The work unit was permanently removed from the ledger." });
+    }, 1200);
+  };
 
   return (
     <div className="space-y-8 pb-12">
@@ -105,7 +197,12 @@ export default function ProgressTrackingPage() {
              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><CheckCircle2 className="w-4 h-4" /></div>
              <div>
                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Completed</p>
-               <p className="text-xl font-black text-foreground">{completedTasks}</p>
+               <div className="flex items-baseline gap-2">
+                 <p className="text-xl font-black text-foreground">{completedTasks}</p>
+                 <p className="text-[10px] font-black text-emerald-600 italic">
+                   {activeTasks > 0 ? Math.round((completedTasks/activeTasks) * 100) : 0}% Eff.
+                 </p>
+               </div>
              </div>
            </CardContent>
          </Card>
@@ -223,7 +320,30 @@ export default function ProgressTrackingPage() {
                    className="w-full h-full"
                  >
                     <Card className={`w-full h-[320px] shadow-sm bg-white rounded-xl transition-all flex flex-col ${isDelayed ? 'bg-rose-50/40 border-rose-200 border text-rose-900' : 'border border-border/40 hover:border-indigo-300/50 hover:shadow-md hover:shadow-indigo-100/30'}`}>
-                       <CardContent className="p-6 flex flex-col items-start justify-start flex-1 h-full w-full">
+                       <CardContent className="p-6 flex flex-col items-start justify-start flex-1 h-full w-full relative">
+                          {/* Quick Action Dropdown */}
+                          <div className="absolute top-4 right-4 z-20">
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                   <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:bg-slate-100">
+                                      < MoreVertical className="h-4 w-4" />
+                                   </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48 rounded-2xl border-none shadow-2xl p-2">
+                                   <DropdownMenuItem className="rounded-xl py-2.5 font-bold text-xs gap-3 cursor-pointer" onClick={() => handleEditClick(item)} disabled={item.isFinal}>
+                                      <Edit3 className="h-4 w-4 text-indigo-500" /> Edit Unit
+                                   </DropdownMenuItem>
+                                   <DropdownMenuItem className="rounded-xl py-2.5 font-bold text-xs gap-3 cursor-pointer" onClick={() => handleMarkFinalClick(item.id)} disabled={item.isFinal}>
+                                      <Lock className="h-4 w-4 text-emerald-500" /> Mark Final
+                                   </DropdownMenuItem>
+                                   <DropdownMenuSeparator className="my-1 bg-slate-100" />
+                                   <DropdownMenuItem className="rounded-xl py-2.5 font-bold text-xs gap-3 text-rose-600 hover:text-rose-700 hover:bg-rose-50 cursor-pointer" onClick={() => handlePurgeClick(item.id)}>
+                                      <Trash2 className="h-4 w-4" /> Purge
+                                   </DropdownMenuItem>
+                                </DropdownMenuContent>
+                             </DropdownMenu>
+                          </div>
+
                           {/* Project Section Heading (Metadata style) */}
                           <div className="mb-2 shrink-0">
                              <p className="text-[10px] font-bold text-indigo-600/80 uppercase tracking-widest leading-none">{item.project}</p>
@@ -266,8 +386,8 @@ export default function ProgressTrackingPage() {
                           {/* Fixed Bottom Action */}
                           <div className="w-full mt-auto pt-4 border-t border-slate-100 shrink-0">
                              <Button variant="ghost" size="sm" className="w-full text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/50 justify-between px-1 h-8 group" onClick={() => toast.info("Opening audit log...")}>
-                               <span>Unit Audit Log</span>
-                               <ArrowUpRight className="w-4 h-4 text-indigo-400 group-hover:text-indigo-600 transition-colors" />
+                                <span>Unit Audit Log</span>
+                                <ArrowUpRight className="w-4 h-4 text-indigo-400 group-hover:text-indigo-600 transition-colors" />
                              </Button>
                           </div>
                        </CardContent>
@@ -319,9 +439,25 @@ export default function ProgressTrackingPage() {
                                </div>
                             </td>
                             <td className="px-6 py-5 text-right">
-                               <Button variant="ghost" size="icon" className="h-9 w-9 p-0 rounded-xl" onClick={() => toast.info("Opening detail audit...")}>
-                                  <ChevronRight className="h-4 w-4" />
-                                </Button>
+                               <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                     <Button variant="ghost" size="icon" className="h-9 w-9 p-0 rounded-xl">
+                                        <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                     </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48 rounded-2xl border-none shadow-2xl p-2">
+                                     <DropdownMenuItem className="rounded-xl py-2.5 font-bold text-xs gap-3 cursor-pointer" onClick={() => handleEditClick(item)} disabled={item.isFinal}>
+                                        <Edit3 className="h-4 w-4 text-indigo-500" /> Edit Unit
+                                     </DropdownMenuItem>
+                                     <DropdownMenuItem className="rounded-xl py-2.5 font-bold text-xs gap-3 cursor-pointer" onClick={() => handleMarkFinalClick(item.id)} disabled={item.isFinal}>
+                                        <Lock className="h-4 w-4 text-emerald-500" /> Mark Final
+                                     </DropdownMenuItem>
+                                     <DropdownMenuSeparator className="my-1 bg-slate-100" />
+                                     <DropdownMenuItem className="rounded-xl py-2.5 font-bold text-xs gap-3 text-rose-600 hover:text-rose-700 hover:bg-rose-50 cursor-pointer" onClick={() => handlePurgeClick(item.id)}>
+                                        <Trash2 className="h-4 w-4" /> Purge
+                                     </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                               </DropdownMenu>
                             </td>
                          </tr>
                        ))}
@@ -368,6 +504,113 @@ export default function ProgressTrackingPage() {
             </motion.div>
           )}
        </AnimatePresence>
+
+        {/* --- Modals (Manager Controls) --- */}
+
+        {/* Edit Unit Modal */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="rounded-3xl border-none shadow-2xl sm:max-w-[500px] p-0 overflow-hidden">
+            <DialogHeader className="p-6 bg-slate-900 text-white">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <Edit3 className="h-5 w-5 text-indigo-400" /> Synchronize Unit
+              </DialogTitle>
+              <DialogDescription className="text-slate-400 text-xs uppercase tracking-widest font-bold mt-1">
+                Operational metadata adjustment
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateItem} className="p-6 space-y-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Unit Identifier</Label>
+                <Input value={editingItem?.name || ''} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="rounded-xl h-11 border-slate-100 bg-slate-50/50 font-bold" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Velocity (%)</Label>
+                  <Input type="number" value={editingItem?.progress || 0} onChange={e => setEditingItem({...editingItem, progress: parseInt(e.target.value)})} className="rounded-xl h-11 border-slate-100 bg-slate-50/50 font-bold" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Lifecycle Status</Label>
+                  <Select value={editingItem?.status || ''} onValueChange={val => setEditingItem({...editingItem, status: val})}>
+                    <SelectTrigger className="rounded-xl h-11 border-slate-100 bg-slate-50/50 font-bold">
+                       <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-none shadow-2xl">
+                       <SelectItem value="Not Started">Not Started</SelectItem>
+                       <SelectItem value="In Progress">In Progress</SelectItem>
+                       <SelectItem value="Completed">Completed</SelectItem>
+                       <SelectItem value="Delayed">Delayed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Strategic Intent</Label>
+                <Textarea value={editingItem?.description || ''} onChange={e => setEditingItem({...editingItem, description: e.target.value})} className="rounded-xl min-h-[100px] border-slate-100 bg-slate-50/50 font-medium text-sm" />
+              </div>
+              <DialogFooter className="pt-4 gap-2 sm:gap-0">
+                <Button type="button" variant="ghost" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl font-bold">Cancel</Button>
+                <Button type="submit" className="rounded-xl font-bold bg-slate-900 text-white px-8" disabled={isProcessing}>
+                  {isProcessing ? "Syncing..." : "Apply Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Mark Final Confirmation */}
+        <Dialog open={isFinalConfirmOpen} onOpenChange={setIsFinalConfirmOpen}>
+          <DialogContent className="rounded-3xl border-none shadow-2xl sm:max-w-[450px]">
+             <DialogHeader>
+                <div className="h-14 w-14 rounded-2xl bg-emerald-50 flex items-center justify-center mb-4 border border-emerald-100">
+                   <Lock className="h-8 w-8 text-emerald-600" />
+                </div>
+                <DialogTitle className="text-xl font-black italic">Finalize Unit State?</DialogTitle>
+                <DialogDescription className="text-sm font-medium text-slate-500">
+                  Marking this unit as final will lock its metadata and categorize it as immutable. This action cannot be undone.
+                </DialogDescription>
+             </DialogHeader>
+             <DialogFooter className="mt-6 gap-2 sm:gap-0">
+                <Button variant="ghost" onClick={() => setIsFinalConfirmOpen(false)} className="rounded-xl font-bold">Cancel</Button>
+                <Button onClick={confirmMarkFinal} className="bg-slate-900 text-white rounded-xl font-bold px-8" disabled={isProcessing}>
+                   {isProcessing ? "Locking..." : "Confirm Finalization"}
+                </Button>
+             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Purge Confirmation */}
+        <Dialog open={isPurgeConfirmOpen} onOpenChange={setIsPurgeConfirmOpen}>
+           <DialogContent className="rounded-3xl border-none shadow-2xl sm:max-w-[450px]">
+              <DialogHeader>
+                 <div className="h-14 w-14 rounded-2xl bg-rose-50 flex items-center justify-center mb-4 border border-rose-100">
+                    <Trash2 className="h-8 w-8 text-rose-600" />
+                 </div>
+                 <DialogTitle className="text-xl font-black italic text-rose-600">Permanently Purge Unit?</DialogTitle>
+                 <DialogDescription className="text-sm font-medium text-slate-500">
+                   You are about to permanently erase this operational unit from the system records. This is a destructive action.
+                 </DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-3">
+                 <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Type "DELETE" to confirm purge</Label>
+                 <Input 
+                   placeholder="Type DELETE" 
+                   value={purgeInput} 
+                   onChange={e => setPurgeInput(e.target.value)}
+                   className="rounded-xl h-11 border-rose-100 bg-rose-50/50 font-black text-rose-600 text-center tracking-widest uppercase"
+                 />
+              </div>
+              <DialogFooter className="mt-2 gap-2 sm:gap-0">
+                 <Button variant="ghost" onClick={() => setIsPurgeConfirmOpen(false)} className="rounded-xl font-bold text-slate-400">Cancel</Button>
+                 <Button 
+                   onClick={confirmPurge} 
+                   className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold px-8 shadow-lg shadow-rose-200" 
+                   disabled={isProcessing || purgeInput !== "DELETE"}
+                 >
+                    {isProcessing ? "Purging..." : "Confirm Purge"}
+                 </Button>
+              </DialogFooter>
+           </DialogContent>
+        </Dialog>
     </div>
   );
 }

@@ -4,7 +4,8 @@ import {
   CheckCircle2, Clock, Calendar, User,
   MoreVertical, Edit2, Trash2, ListPlus,
   Target, BarChart3, ChevronRight, LayoutGrid,
-  List, Timer, ArrowUpRight, AlertCircle, AlertTriangle
+  List, Timer, ArrowUpRight, AlertCircle, AlertTriangle,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -24,12 +25,12 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const tasksData = [
-  { id: "T1", name: "AWS S3 Bucket Config", project: "Cloud Migration", priority: "High", deadline: "2026-04-16", assignee: "Sarah Chen", status: "In Progress", hours: 4 },
-  { id: "T2", name: "OAuth2 Provider Integration", project: "Security Infrastructure", priority: "High", deadline: "2026-04-20", assignee: "David Kim", status: "Not Started", hours: 12 },
-  { id: "T3", name: "Chart.js Theme Registry", project: "SaaS Dashboard Phase 2", priority: "Medium", deadline: "2026-04-25", assignee: "Unassigned", status: "Not Started", hours: 8 },
-  { id: "T4", name: "Legacy DB Indexing Audit", project: "Cloud Migration", priority: "High", deadline: "2026-04-15", assignee: "Sarah Chen", status: "Completed", hours: 6 },
-  { id: "T5", name: "UI Polish - Sidebar Motion", project: "SaaS Dashboard Phase 2", priority: "Low", deadline: "2026-05-01", assignee: "Mike Chen", status: "In Progress", hours: 16 },
+const INITIAL_TASKS = [
+  { id: "T1", name: "AWS S3 Bucket Config", project: "Cloud Migration", priority: "High", deadline: "2026-04-16", assignee: "Sarah Chen", status: "In Progress", hours: 4, description: "Configure S3 buckets with proper IAM policies.", isFinal: false },
+  { id: "T2", name: "OAuth2 Provider Integration", project: "Security Infrastructure", priority: "High", deadline: "2026-04-20", assignee: "David Kim", status: "Not Started", hours: 12, description: "Integrate Auth0 or similar provider.", isFinal: false },
+  { id: "T3", name: "Chart.js Theme Registry", project: "SaaS Dashboard Phase 2", priority: "Medium", deadline: "2026-04-25", assignee: "Unassigned", status: "Not Started", hours: 8, description: "Create a central registry for chart themes.", isFinal: false },
+  { id: "T4", name: "Legacy DB Indexing Audit", project: "Cloud Migration", priority: "High", deadline: "2026-04-15", assignee: "Sarah Chen", status: "Completed", hours: 6, description: "Audit current indexes on the MySQL database.", isFinal: false },
+  { id: "T5", name: "UI Polish - Sidebar Motion", project: "SaaS Dashboard Phase 2", priority: "Low", deadline: "2026-05-01", assignee: "Mike Chen", status: "In Progress", hours: 16, description: "Smooth out sidebar transitions.", isFinal: false },
 ];
 
 const priorityStyles = {
@@ -43,11 +44,13 @@ const statusStyles = {
   "In Progress": "bg-indigo-500/10 text-indigo-600 border-none",
   "Not Started": "bg-slate-500/10 text-slate-600 border-none",
   "Delayed": "bg-rose-500/10 text-rose-600 border-none",
+  "Final": "bg-slate-900 text-white border-none",
 };
 
 const TODAY = new Date("2026-04-17");
 
 export default function ManagerTasksPage() {
+  const [tasks, setTasks] = useState(INITIAL_TASKS);
   const [searchQuery, setSearchQuery] = useState("");
   const [projectFilter, setProjectFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -57,29 +60,38 @@ export default function ManagerTasksPage() {
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
 
-  const filteredTasks = useMemo(() => tasksData.filter(t => 
+  // Action States
+  const [editingTask, setEditingTask] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isFinalConfirmOpen, setIsFinalConfirmOpen] = useState(false);
+  const [isPurgeConfirmOpen, setIsPurgeConfirmOpen] = useState(false);
+  const [targetTaskId, setTargetTaskId] = useState<string | null>(null);
+  const [purgeInput, setPurgeInput] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const filteredTasks = useMemo(() => tasks.filter(t => 
     (projectFilter === "All" || t.project === projectFilter) &&
     (statusFilter === "All" || t.status === statusFilter) &&
     (priorityFilter === "All" || t.priority === priorityFilter) &&
     (assigneeFilter === "All" || t.assignee === assigneeFilter) &&
     (t.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
      t.assignee.toLowerCase().includes(searchQuery.toLowerCase()))
-  ), [searchQuery, projectFilter, statusFilter, priorityFilter, assigneeFilter]);
+  ), [tasks, searchQuery, projectFilter, statusFilter, priorityFilter, assigneeFilter]);
 
   const isOverdue = (deadline: string, status: string) => status !== "Completed" && new Date(deadline) < TODAY;
 
-  const totalTasks = tasksData.length;
-  const inProgress = tasksData.filter(t => t.status === "In Progress").length;
-  const completed = tasksData.filter(t => t.status === "Completed").length;
-  const overdueCount = tasksData.filter(t => isOverdue(t.deadline, t.status)).length;
-  const unassignedCount = tasksData.filter(t => t.assignee === "Unassigned").length;
+  const totalTasks = tasks.length;
+  const inProgress = tasks.filter(t => t.status === "In Progress").length;
+  const completed = tasks.filter(t => t.status === "Completed").length;
+  const overdueCount = tasks.filter(t => isOverdue(t.deadline, t.status)).length;
+  const unassignedCount = tasks.filter(t => t.assignee === "Unassigned").length;
 
-  const workload = useMemo(() => tasksData.reduce((acc, t) => {
+  const workload = useMemo(() => tasks.reduce((acc, t) => {
     if (t.assignee !== "Unassigned" && t.status !== "Completed") {
       acc[t.assignee] = (acc[t.assignee] || 0) + 1;
     }
     return acc;
-  }, {} as Record<string, number>), []);
+  }, {} as Record<string, number>), [tasks]);
 
   const toggleSelectAll = () => {
     if (selectedTasks.length === filteredTasks.length) setSelectedTasks([]);
@@ -94,6 +106,62 @@ export default function ManagerTasksPage() {
     e.preventDefault();
     toast.success("Task created and synchronized with project roadmap.");
     setIsTaskModalOpen(false);
+  };
+
+  // Handlers for Unit Actions
+  const handleEditClick = (task: any) => {
+    if (task.isFinal) {
+      toast.error("Fixed State Error", { description: "Finalized tasks cannot be modified." });
+      return;
+    }
+    setEditingTask({ ...task });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    setTimeout(() => {
+      setTasks(prev => prev.map(t => t.id === editingTask.id ? editingTask : t));
+      setIsEditDialogOpen(false);
+      setIsProcessing(false);
+      toast.success("Task Synchronized", { description: `${editingTask.name} updated successfully.` });
+    }, 800);
+  };
+
+  const handleMarkFinalClick = (id: string) => {
+    setTargetTaskId(id);
+    setIsFinalConfirmOpen(true);
+  };
+
+  const confirmMarkFinal = () => {
+    setIsProcessing(true);
+    setTimeout(() => {
+      setTasks(prev => prev.map(t => t.id === targetTaskId ? { ...t, isFinal: true, status: "Final", hours: 0 } : t));
+      setIsFinalConfirmOpen(false);
+      setIsProcessing(false);
+      toast.success("Task Immobilized", { description: "Task has been locked into the final archive." });
+    }, 1000);
+  };
+
+  const handlePurgeClick = (id: string) => {
+      setTargetTaskId(id);
+      setIsPurgeConfirmOpen(true);
+      setPurgeInput("");
+  };
+
+  const confirmPurge = () => {
+    if (purgeInput !== "DELETE") {
+      toast.error("Confirmation Invalid", { description: "Type DELETE to confirm." });
+      return;
+    }
+    setIsProcessing(true);
+    setTimeout(() => {
+      setTasks(prev => prev.filter(t => t.id !== targetTaskId));
+      setIsPurgeConfirmOpen(false);
+      setIsProcessing(false);
+      toast.error("Task Purged", { description: "Unit permanently removed from the ledger." });
+    }, 1200);
   };
 
   return (
@@ -207,7 +275,12 @@ export default function ManagerTasksPage() {
              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><CheckCircle2 className="w-5 h-5" /></div>
              <div>
                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Completed</p>
-               <p className="text-xl font-bold">{completed}</p>
+               <div className="flex items-baseline gap-2">
+                 <p className="text-xl font-bold">{completed}</p>
+                 <p className="text-[10px] font-black text-emerald-600 italic">
+                   {totalTasks > 0 ? Math.round((completed / totalTasks) * 100) : 0}% Eff.
+                 </p>
+               </div>
              </div>
            </CardContent>
          </Card>
@@ -370,10 +443,10 @@ export default function ManagerTasksPage() {
                                          <MoreVertical className="h-4 w-4" />
                                       </Button>
                                    </DropdownMenuTrigger>
-                                   <DropdownMenuContent align="end" className="rounded-2xl border-none shadow-2xl p-1.5 w-40">
-                                      <DropdownMenuItem className="rounded-xl gap-2 py-2 cursor-pointer font-bold text-xs"><Edit2 className="h-3.5 w-3.5" /> Edit Unit</DropdownMenuItem>
-                                      <DropdownMenuItem className="rounded-xl gap-2 py-2 cursor-pointer font-bold text-xs"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Mark Final</DropdownMenuItem>
-                                      <DropdownMenuItem className="rounded-xl gap-2 py-2 cursor-pointer font-bold text-xs text-rose-600 focus:bg-rose-50"><Trash2 className="h-3.5 w-3.5" /> Purge</DropdownMenuItem>
+                                   <DropdownMenuContent align="end" className="rounded-2xl border-none shadow-2xl p-1.5 w-48">
+                                      <DropdownMenuItem className="rounded-xl gap-2 py-2 cursor-pointer font-bold text-xs" onClick={() => handleEditClick(task)} disabled={task.isFinal}><Edit2 className="h-3.5 w-3.5 text-indigo-500" /> Edit Unit</DropdownMenuItem>
+                                      <DropdownMenuItem className="rounded-xl gap-2 py-2 cursor-pointer font-bold text-xs" onClick={() => handleMarkFinalClick(task.id)} disabled={task.isFinal}><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Mark Final</DropdownMenuItem>
+                                      <DropdownMenuItem className="rounded-xl gap-2 py-2 cursor-pointer font-bold text-xs text-rose-600 focus:bg-rose-50" onClick={() => handlePurgeClick(task.id)}><Trash2 className="h-3.5 w-3.5" /> Purge</DropdownMenuItem>
                                    </DropdownMenuContent>
                                 </DropdownMenu>
                              </td>
@@ -402,7 +475,27 @@ export default function ManagerTasksPage() {
                     <CardHeader className="pb-4">
                        <div className="flex justify-between items-start mb-2">
                           <Badge className={`${priorityStyles[task.priority as keyof typeof priorityStyles]} text-[8px] font-black uppercase`}>{task.priority}</Badge>
-                          <Badge className={`${statusStyles[task.status as keyof typeof statusStyles]} text-[8px] font-black uppercase`}>{task.status}</Badge>
+                          <div className="flex items-center gap-1">
+                             <Badge className={`${statusStyles[task.status as keyof typeof statusStyles]} text-[8px] font-black uppercase`}>{task.status}</Badge>
+                             <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                   <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-slate-200">
+                                      <MoreVertical className="h-3 w-3" />
+                                   </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="rounded-2xl border-none shadow-2xl p-2 w-48">
+                                   <DropdownMenuItem className="rounded-xl gap-2 py-2.5 cursor-pointer font-bold text-xs" onClick={() => handleEditClick(task)} disabled={task.isFinal}>
+                                      <Edit2 className="h-4 w-4 text-indigo-500" /> Edit Unit
+                                   </DropdownMenuItem>
+                                   <DropdownMenuItem className="rounded-xl gap-2 py-2.5 cursor-pointer font-bold text-xs" onClick={() => handleMarkFinalClick(task.id)} disabled={task.isFinal}>
+                                      <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Mark Final
+                                   </DropdownMenuItem>
+                                   <DropdownMenuItem className="rounded-xl gap-2 py-2.5 cursor-pointer font-bold text-xs text-rose-600 focus:bg-rose-50" onClick={() => handlePurgeClick(task.id)}>
+                                      <Trash2 className="h-4 w-4" /> Purge
+                                   </DropdownMenuItem>
+                                </DropdownMenuContent>
+                             </DropdownMenu>
+                          </div>
                        </div>
                        <CardTitle className={`text-lg font-bold italic group-hover:text-primary transition-colors ${overdue ? 'text-rose-900' : ''}`}>{task.name}</CardTitle>
                        <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-indigo-600/60 mt-0.5">{task.project}</CardDescription>
@@ -445,6 +538,113 @@ export default function ManagerTasksPage() {
            )})}
         </div>
       )}
+
+      {/* --- Modals (Manager Scope) --- */}
+
+      {/* Edit Modal */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="rounded-3xl border-none shadow-2xl sm:max-w-[500px] p-0 overflow-hidden bg-white">
+          <DialogHeader className="p-8 bg-slate-900 text-white">
+            <DialogTitle className="text-xl font-bold flex items-center gap-3">
+               <Edit2 className="h-5 w-5 text-indigo-400" /> Synchronize Unit
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">
+               Refining operational parameters
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateTask} className="p-8 space-y-5">
+             <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-muted-foreground">Task Identifier</Label>
+                <Input value={editingTask?.name || ''} onChange={e => setEditingTask({...editingTask, name: e.target.value})} className="rounded-xl h-11 border-slate-100 bg-slate-50/50 font-bold" />
+             </div>
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                   <Label className="text-[10px] font-black uppercase text-muted-foreground">Priority Tier</Label>
+                   <Select value={editingTask?.priority || ''} onValueChange={v => setEditingTask({...editingTask, priority: v})}>
+                      <SelectTrigger className="rounded-xl h-11 border-slate-100 bg-slate-50/50 font-bold">
+                         <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-none shadow-2xl">
+                         <SelectItem value="High">High Velocity</SelectItem>
+                         <SelectItem value="Medium">Standard</SelectItem>
+                         <SelectItem value="Low">Backlog</SelectItem>
+                      </SelectContent>
+                   </Select>
+                </div>
+                <div className="space-y-2">
+                   <Label className="text-[10px] font-black uppercase text-muted-foreground">Lifecycle State</Label>
+                   <Select value={editingTask?.status || ''} onValueChange={v => setEditingTask({...editingTask, status: v})}>
+                      <SelectTrigger className="rounded-xl h-11 border-slate-100 bg-slate-50/50 font-bold">
+                         <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-none shadow-2xl">
+                         <SelectItem value="Not Started">Not Started</SelectItem>
+                         <SelectItem value="In Progress">In Progress</SelectItem>
+                         <SelectItem value="Completed">Completed</SelectItem>
+                         <SelectItem value="Delayed">Delayed</SelectItem>
+                      </SelectContent>
+                   </Select>
+                </div>
+             </div>
+             <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-muted-foreground">Strategic Requirements</Label>
+                <Textarea value={editingTask?.description || ''} onChange={e => setEditingTask({...editingTask, description: e.target.value})} className="rounded-xl border-slate-100 bg-slate-50/50 min-h-[100px]" />
+             </div>
+             <DialogFooter className="pt-4 gap-2 sm:gap-0">
+                <Button type="button" variant="ghost" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl font-black text-[10px] uppercase tracking-widest">Abort</Button>
+                <Button type="submit" className="rounded-xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest px-8" disabled={isProcessing}>
+                   {isProcessing ? "Syncing..." : "Update Node"}
+                </Button>
+             </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mark Final Modal */}
+      <Dialog open={isFinalConfirmOpen} onOpenChange={setIsFinalConfirmOpen}>
+         <DialogContent className="rounded-3xl border-none shadow-2xl sm:max-w-[420px] bg-white">
+            <DialogHeader>
+               <div className="h-14 w-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+               </div>
+               <DialogTitle className="text-xl font-bold tracking-tight italic">Cement Outcome?</DialogTitle>
+               <DialogDescription className="text-sm font-medium text-slate-500">
+                 Moving this unit to the final archive will lock all metadata and prevent further operational shifts.
+               </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-6 gap-2 sm:gap-0">
+               <Button variant="ghost" onClick={() => setIsFinalConfirmOpen(false)} className="rounded-xl font-bold">Cancel</Button>
+               <Button onClick={confirmMarkFinal} className="bg-slate-900 text-white rounded-xl font-bold px-8 shadow-xl" disabled={isProcessing}>
+                  {isProcessing ? "Sealing..." : "Confirm Final"}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
+
+      {/* Purge Modal */}
+      <Dialog open={isPurgeConfirmOpen} onOpenChange={setIsPurgeConfirmOpen}>
+         <DialogContent className="rounded-3xl border-none shadow-2xl sm:max-w-[420px] bg-white">
+            <DialogHeader>
+               <div className="h-14 w-14 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center mb-4">
+                  <Trash2 className="h-8 w-8 text-rose-600" />
+               </div>
+               <DialogTitle className="text-xl font-bold tracking-tight italic text-rose-600">Purge Operational Node?</DialogTitle>
+               <DialogDescription className="text-sm font-medium text-slate-500">
+                 This is a destructive command. Type <strong className="text-rose-600 font-bold uppercase">DELETE</strong> to permanently remove this unit from the system records.
+               </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-3">
+               <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Verification Input</Label>
+               <Input value={purgeInput} onChange={e => setPurgeInput(e.target.value)} placeholder="Type DELETE" className="rounded-xl h-11 border-rose-100 bg-rose-50/30 font-black text-rose-600 tracking-widest text-center" />
+            </div>
+            <DialogFooter className="mt-2 gap-2 sm:gap-0">
+               <Button variant="ghost" onClick={() => setIsPurgeConfirmOpen(false)} className="rounded-xl font-bold text-slate-400">Abort</Button>
+               <Button onClick={confirmPurge} className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold px-8 shadow-xl" disabled={isProcessing || purgeInput !== "DELETE"}>
+                  {isProcessing ? "Purging..." : "Confirm Purge"}
+               </Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
     </div>
   );
 }
