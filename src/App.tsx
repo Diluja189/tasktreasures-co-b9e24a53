@@ -37,6 +37,7 @@ import ManagerTasksPage from "@/pages/manager/ManagerTasksPage";
 import TeamAssignmentPage from "@/pages/manager/TeamAssignmentPage";
 import ProgressTrackingPage from "@/pages/manager/ProgressTrackingPage";
 import StatusReportsPage from "@/pages/manager/StatusReportsPage";
+import ManagerDetailedAuditPage from "@/pages/manager/ManagerDetailedAuditPage";
 
 // Team Member Pages
 import MemberTasksPage from "@/pages/member/MemberTasksPage";
@@ -77,6 +78,7 @@ const App = () => {
                 <Route path="/manager/tracking" element={<ProgressTrackingPage />} />
                 <Route path="/manager/reports" element={<StatusReportsPage />} />
                 <Route path="/manager/notifications" element={<NotificationsPage />} />
+                <Route path="/manager/audit" element={<ManagerDetailedAuditPage />} />
 
                 {/* Team Member Specific Routes */}
                 <Route path="/member/tasks" element={<MemberTasksPage />} />
