@@ -16,11 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const reportableProjects = [
-  { id: "P1", name: "Cloud Migration", completed: 8, inProgress: 4, delayed: 0, health: 92 },
-  { id: "P2", name: "SaaS Dashboard Phase 2", completed: 3, inProgress: 3, delayed: 2, health: 68 },
-  { id: "P3", name: "Security Infrastructure", completed: 5, inProgress: 1, delayed: 0, health: 95 },
-];
+const reportableProjects = [];
 
 export default function StatusReportsPage() {
   const [selectedProject, setSelectedProject] = useState<string>("");
@@ -178,11 +174,7 @@ export default function StatusReportsPage() {
               </CardHeader>
               <CardContent className="p-0">
                  <div className="divide-y divide-border/40">
-                    {[
-                      { project: "Infrastructure Prep", date: "Apr 12, 11:45 AM", state: "Verified" },
-                      { project: "Beta Testing Stream", date: "Apr 08, 09:30 AM", state: "Awaiting Review" },
-                      { project: "Cloud Migration", date: "Apr 04, 04:15 PM", state: "Verified" },
-                    ].map((h, i) => (
+                    {[].map((h, i) => (
                       <div key={i} className="p-6 hover:bg-slate-50 transition-colors group cursor-pointer">
                          <div className="flex justify-between items-center mb-2">
                             <p className="font-bold text-sm text-slate-800 group-hover:text-indigo-600 transition-colors">{h.project}</p>

@@ -13,19 +13,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-const initialTasks = [
-  { id: "UT1", name: "OAuth2 Provider Integration", project: "Security Infrastructure", priority: "High", estHours: 12, deadline: "Apr 20, 2026" },
-  { id: "UT2", name: "Chart.js Theme Registry", project: "SaaS Dashboard Phase 2", priority: "Medium", estHours: 8, deadline: "Apr 25, 2026" },
-  { id: "UT3", name: "Internal API Docs v3", project: "Cloud Migration", priority: "Low", estHours: 4, deadline: "May 05, 2026" },
-];
-
-const initialMembers = [
-  { id: "TM1", name: "Sarah Chen", role: "Sr. Backend Engineer", activeTasks: 4, workload: 88, status: "High", avatar: "SC" },
-  { id: "TM2", name: "David Kim", role: "UI/UX Designer", activeTasks: 2, workload: 45, status: "Balanced", avatar: "DK" },
-  { id: "TM3", name: "Lisa Wang", role: "QA Lead", activeTasks: 6, workload: 96, status: "Overloaded", avatar: "LW" },
-  { id: "TM4", name: "Mike Chen", role: "Frontend Dev", activeTasks: 1, workload: 15, status: "Balanced", avatar: "MC" },
-  { id: "TM5", name: "Anna Bell", role: "DevOps Engineer", activeTasks: 3, workload: 72, status: "Busy", avatar: "AB" },
-];
+const initialTasks = [];
+const initialMembers = [];
 
 const workloadStyles = {
   "Balanced": "bg-emerald-500/10 text-emerald-600 border-none",

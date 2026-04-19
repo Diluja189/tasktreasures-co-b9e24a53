@@ -27,107 +27,7 @@ interface Notification {
   link: string;
 }
 
-const initialNotifications: Notification[] = [
-  { 
-    id: "1", 
-    type: "tasks", 
-    priority: "high", 
-    icon: AlertCircle, 
-    message: "Critical: Task 'Payment Gateway Integration' is 2 days overdue", 
-    time: "5m ago", 
-    timestamp: new Date(Date.now() - 5 * 60000),
-    read: false, 
-    link: "/tasks" 
-  },
-  { 
-    id: "2", 
-    type: "alerts", 
-    priority: "high", 
-    icon: AlertTriangle, 
-    message: "Project 'HealthGuard v2' delay detected - critical milestone missed", 
-    time: "15m ago", 
-    timestamp: new Date(Date.now() - 15 * 60000),
-    read: false, 
-    link: "/projects" 
-  },
-  { 
-    id: "3", 
-    type: "security", 
-    priority: "high", 
-    icon: ShieldAlert, 
-    message: "Suspicious login attempt detected from unknown IP (192.168.1.105)", 
-    time: "45m ago", 
-    timestamp: new Date(Date.now() - 45 * 60000),
-    read: false, 
-    link: "/audit-logs" 
-  },
-  { 
-    id: "4", 
-    type: "tasks", 
-    priority: "medium", 
-    icon: Clock, 
-    message: "Deadline approaching: 'UI/UX Final Audit' due in 4 hours", 
-    time: "2h ago", 
-    timestamp: new Date(Date.now() - 120 * 60000),
-    read: false, 
-    link: "/tasks" 
-  },
-  { 
-    id: "5", 
-    type: "alerts", 
-    priority: "medium", 
-    icon: UserCog, 
-    message: "Manager Overload: Sarah Chen is currently managing 8 projects", 
-    time: "3h ago", 
-    timestamp: new Date(Date.now() - 180 * 60000),
-    read: false, 
-    link: "/managers" 
-  },
-  { 
-    id: "6", 
-    type: "managers", 
-    priority: "low", 
-    icon: UserPlus, 
-    message: "New Manager 'Robert Fox' successfully onboarded to Engineering", 
-    time: "5h ago", 
-    timestamp: new Date(Date.now() - 300 * 60000),
-    read: true, 
-    link: "/managers" 
-  },
-  { 
-    id: "7", 
-    type: "tasks", 
-    priority: "low", 
-    icon: CheckSquare, 
-    message: "Task 'Database Schema Update' completed by Mike Jones", 
-    time: "8h ago", 
-    timestamp: new Date(Date.now() - 480 * 60000),
-    read: true, 
-    link: "/tasks" 
-  },
-  { 
-    id: "8", 
-    type: "members", 
-    priority: "low", 
-    icon: ShieldCheck, 
-    message: "Access level updated for Team Member 'Alex Rivera' to Senior Dev", 
-    time: "1d ago", 
-    timestamp: new Date(Date.now() - 1440 * 60000),
-    read: true, 
-    link: "/users" 
-  },
-  { 
-    id: "9", 
-    type: "alerts", 
-    priority: "low", 
-    icon: LinkIcon, 
-    message: "Unassigned tasks found in 'Cloud Migration' project (3 tasks)", 
-    time: "1d ago", 
-    timestamp: new Date(Date.now() - 1500 * 60000),
-    read: true, 
-    link: "/tasks" 
-  },
-];
+const initialNotifications: Notification[] = [];
 
 const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
 
@@ -287,11 +187,7 @@ const NotificationsPage = () => {
                             </h3>
                           </div>
 
-                          <div className="opacity-0 group-hover:opacity-100 transition-all duration-500 translate-x-4 group-hover:translate-x-0 mt-2">
-                             <div className="h-9 w-9 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-600/40">
-                                <LinkIcon className="h-4 w-4" />
-                             </div>
-                          </div>
+                          <div className="mt-2" />
 
                           {/* Invisible left-side emphasis bar for unread */}
                           {!n.read && (

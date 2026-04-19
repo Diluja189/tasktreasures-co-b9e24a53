@@ -23,12 +23,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
-const initialProjects = [
-  { id: "PRJ-001", name: "E-Commerce Platform", manager: "Sarah Chen", status: "Active", priority: "High", progress: 78, deadline: "2025-07-15", startDate: "2024-01-10", description: "Rebuilding the core e-commerce engine." },
-  { id: "PRJ-002", name: "Mobile App v3.0", manager: "Sarah Chen", status: "Delayed", priority: "High", progress: 45, deadline: "2025-08-01", startDate: "2024-02-15", description: "Mobile application migration to React Native." },
-  { id: "PRJ-003", name: "Analytics Dashboard", manager: "Lisa Wang", status: "Active", priority: "Medium", progress: 60, deadline: "2025-08-15", startDate: "2024-03-20", description: "Internal data visualization tool." },
-  { id: "PRJ-004", name: "Security Audit", manager: "David Kim", status: "Completed", priority: "High", progress: 100, deadline: "2025-06-15", startDate: "2024-01-05", description: "Annual system-wide security assessment." },
-];
+const initialProjects = [];
 
 const statusConfig = {
   Active: { color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: Clock },
@@ -45,7 +40,14 @@ const priorityConfig = {
 export default function ProjectsPage() {
   const { currentUser } = useRole();
   const navigate = useNavigate();
-  const [projects, setProjects] = useState(initialProjects);
+  const [projects, setProjects] = useState<any[]>(() => {
+    const saved = localStorage.getItem("app_projects_persistence");
+    return saved ? JSON.parse(saved) : initialProjects;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("app_projects_persistence", JSON.stringify(projects));
+  }, [projects]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
@@ -55,20 +57,20 @@ export default function ProjectsPage() {
     name: "",
     description: "",
     startDate: "",
-    endDate: "",
+    deadline: "",
     priority: "Medium",
     manager: "",
     duration: "0 days"
   });
 
   useEffect(() => {
-    if (formData.startDate && formData.endDate) {
+    if (formData.startDate && formData.deadline) {
       const start = new Date(formData.startDate);
-      const end = new Date(formData.endDate);
+      const end = new Date(formData.deadline);
       const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
       setFormData(prev => ({ ...prev, duration: diff > 0 ? `${diff} days` : "0 days" }));
     }
-  }, [formData.startDate, formData.endDate]);
+  }, [formData.startDate, formData.deadline]);
 
   const handleSave = () => {
     if (!formData.name) return toast.error("Please enter a project name");
@@ -82,6 +84,10 @@ export default function ProjectsPage() {
         id: `PRJ-${Math.floor(1000 + Math.random() * 9000)}`,
         status: "Active",
         progress: 0,
+        totalTasks: 0,
+        completedTasks: 0,
+        delayedTasks: 0,
+        teamMembersCount: Math.floor(Math.random() * 4) + 1,
       } as any;
       setProjects(prev => [newProject, ...prev]);
       toast.success("Project created successfully!");
@@ -103,7 +109,7 @@ export default function ProjectsPage() {
       name: project.name,
       description: project.description,
       startDate: project.startDate || "",
-      endDate: project.deadline || "",
+      deadline: project.deadline || "",
       priority: project.priority,
       manager: project.manager,
       duration: ""
@@ -115,7 +121,7 @@ export default function ProjectsPage() {
   const [viewingProject, setViewingProject] = useState<any>(null);
 
   const resetForm = () => {
-    setFormData({ name: "", description: "", startDate: "", endDate: "", priority: "Medium", manager: "", duration: "0 days" });
+    setFormData({ name: "", description: "", startDate: "", deadline: "", priority: "Medium", manager: "", duration: "0 days" });
     setEditingProject(null);
   };
 
@@ -124,9 +130,9 @@ export default function ProjectsPage() {
 
   const filtered = projects.filter(p => 
     (statusFilter === "All" || p.status === statusFilter) &&
-    (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-     p.manager.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     p.id.toLowerCase().includes(searchQuery.toLowerCase()))
+    ((p.name || "").toLowerCase().includes((searchQuery || "").toLowerCase()) || 
+     (p.manager || "").toLowerCase().includes((searchQuery || "").toLowerCase()) ||
+     (p.id || "").toLowerCase().includes((searchQuery || "").toLowerCase()))
   );
 
   const handleViewDetails = (project: any) => {
@@ -135,7 +141,7 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10 pt-5">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -170,18 +176,21 @@ export default function ProjectsPage() {
            </Button>
            
            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 rounded-xl h-8 text-[10px] font-black uppercase tracking-widest border-none" onClick={() => { setEditingProject(null); resetForm(); }}>
+              <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 rounded-xl h-8 text-[10px] font-black uppercase tracking-widest border-none" 
+                onClick={() => { 
+                  setEditingProject(null); 
+                  resetForm(); 
+                  setIsCreateOpen(true);
+                }}>
                 <Plus className="h-3.5 w-3.5" /> Create
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[380px] overflow-hidden rounded-xl border border-border/50 shadow-2xl p-0 gap-0 bg-white dark:bg-slate-950">
+            <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto rounded-xl border border-border/50 shadow-2xl p-0 gap-0 bg-white dark:bg-slate-950">
               <DialogHeader className="bg-emerald-600 p-3 text-white text-left">
                 <DialogTitle className="text-base font-black">{editingProject ? "Edit Project" : "New Project"}</DialogTitle>
                 <DialogDescription className="text-emerald-500/10 hidden">Hidden for accessibility but present</DialogDescription>
               </DialogHeader>
               
-              <div className="p-4 space-y-3.5">
+              <div className="p-4 space-y-3">
                 <div className="space-y-1">
                   <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Project Name</Label>
                   <Input 
@@ -197,7 +206,7 @@ export default function ProjectsPage() {
                   <Textarea 
                     id="desc" 
                     placeholder="Short duration objectives..." 
-                    className="min-h-[60px] rounded-lg border-muted-foreground/20 focus-visible:ring-emerald-500/30 text-xs py-2 px-2.5 resize-none bg-background"
+                    className="min-h-[50px] rounded-lg border-muted-foreground/20 focus-visible:ring-emerald-500/30 text-xs py-2 px-2.5 resize-none bg-background"
                     value={formData.description}
                     onChange={e => setFormData(f => ({ ...f, description: e.target.value }))}
                   />
@@ -209,7 +218,7 @@ export default function ProjectsPage() {
                    </div>
                    <div className="space-y-1">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Deadline</Label>
-                      <Input type="date" className="h-8 rounded-lg text-[10px] px-2" value={formData.endDate} onChange={e => setFormData(f => ({ ...f, endDate: e.target.value }))} />
+                      <Input type="date" className="h-8 rounded-lg text-[10px] px-2" value={formData.deadline} onChange={e => setFormData(f => ({ ...f, deadline: e.target.value }))} />
                    </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -233,19 +242,6 @@ export default function ProjectsPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Assign Manager</Label>
-                  <Select value={formData.manager} onValueChange={v => setFormData(f => ({ ...f, manager: v }))}>
-                    <SelectTrigger className="h-8 rounded-lg text-xs px-2.5">
-                      <SelectValue placeholder="Choose leader" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Sarah Chen" className="text-xs">Sarah Chen</SelectItem>
-                      <SelectItem value="David Kim" className="text-xs">David Kim</SelectItem>
-                      <SelectItem value="Lisa Wang" className="text-xs">Lisa Wang</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
               
               <div className="p-4 pt-0 flex gap-2 justify-end">
@@ -256,7 +252,7 @@ export default function ProjectsPage() {
                   onClick={() => {
                     if (!formData.name) return toast.error("Enter project name");
                     toast.info(`Preview: ${formData.name}`, {
-                      description: `${formData.priority} Priority • Ends ${formData.endDate || 'N/A'}`
+                      description: `${formData.priority} Priority • Ends ${formData.deadline || 'N/A'}`
                     });
                   }}
                 >
@@ -359,6 +355,62 @@ export default function ProjectsPage() {
         <AnimatePresence>
           {filtered.map((project, index) => {
             const StatusIcon = statusConfig[project.status as keyof typeof statusConfig].icon;
+            
+            const perf = (() => {
+              const totalTasks = project.totalTasks || 0;
+              if (!totalTasks || !project.startDate || !project.deadline) return null;
+
+              const completedTasks = project.completedTasks || 0;
+              const delayedTasks = project.delayedTasks || 0;
+              
+              const start = new Date(project.startDate);
+              const end = new Date(project.deadline);
+              const today = new Date();
+
+              const totalDuration = end.getTime() - start.getTime();
+              const elapsed = today.getTime() - start.getTime();
+              let expectedProgress = totalDuration > 0 ? elapsed / totalDuration : 1;
+              expectedProgress = Math.max(0, Math.min(1, expectedProgress));
+
+              const actualProgress = totalTasks > 0 ? completedTasks / totalTasks : 0;
+              
+              let projectScore = 0;
+              if (actualProgress >= expectedProgress) {
+                 projectScore = 100;
+              } else {
+                 projectScore = expectedProgress > 0 ? (actualProgress / expectedProgress) * 100 : 100;
+              }
+
+              const teamCompletion = 90;
+              const onTimeDelivery = 95;
+              const delayControl = totalTasks > 0 ? Math.max(0, 100 - (delayedTasks / totalTasks) * 100) : 100;
+
+              let managerPerformance = (projectScore * 0.4) + (teamCompletion * 0.3) + (onTimeDelivery * 0.2) + (delayControl * 0.1);
+              managerPerformance = Math.min(100, Math.max(0, Math.round(managerPerformance)));
+
+              const actualP = Math.round(actualProgress * 100);
+              const expectedP = Math.round(expectedProgress * 100);
+
+              let statusText = "Behind";
+              let statusColorBg = "bg-rose-500";
+              let statusColorText = "text-rose-500";
+              let statusBadgeBg = "bg-rose-500/10";
+
+              if (actualP > expectedP) {
+                statusText = "Ahead";
+                statusColorBg = "bg-emerald-500";
+                statusColorText = "text-emerald-500";
+                statusBadgeBg = "bg-emerald-500/10";
+              } else if (actualP === expectedP) {
+                statusText = "On Track";
+                statusColorBg = "bg-amber-500";
+                statusColorText = "text-amber-500";
+                statusBadgeBg = "bg-amber-500/10";
+              }
+
+              return { managerPerformance, statusText, statusColorBg, statusColorText, statusBadgeBg };
+            })();
+
             return (
               <motion.div
                 key={project.id}
@@ -401,35 +453,24 @@ export default function ProjectsPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4 p-4 pt-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex -space-x-1.5">
-                        <div className="h-6 w-6 rounded-full bg-primary/20 border border-white flex items-center justify-center text-[8px] font-bold text-primary">SC</div>
-                        <div className="h-6 w-6 rounded-full bg-indigo-500/20 border border-white flex items-center justify-center text-[8px] font-bold text-indigo-600">DK</div>
-                        <div className="h-6 w-6 rounded-full bg-secondary border border-white flex items-center justify-center text-[8px] font-bold">+4</div>
-                      </div>
+                    <div className="flex items-center justify-end">
                       <Badge variant="outline" className={`text-[8px] px-1.5 py-0 rounded-full ${priorityConfig[project.priority as keyof typeof priorityConfig]}`}>
                         {project.priority}
                       </Badge>
                     </div>
-                    
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                        <span>Progress</span>
-                        <span>{project.progress}%</span>
-                      </div>
-                      <Progress value={project.progress} className="h-1 rounded-full overflow-hidden" />
-                    </div>
- 
-                    <div className="grid grid-cols-2 gap-2 pb-1">
+
+
+                    <div className="grid grid-cols-2 gap-y-2 gap-x-2 pb-2 border-b border-muted/20">
                       <div className="space-y-0.5">
-                        <p className="text-[8px] uppercase font-bold text-muted-foreground">Manager</p>
-                        <p className="text-[10px] font-semibold">{project.manager}</p>
+                        <p className="text-[8px] uppercase font-bold text-muted-foreground flex items-center gap-1"><Calendar className="h-2 w-2" /> Start Date</p>
+                        <p className="text-[10px] font-semibold">{project.startDate || "N/A"}</p>
                       </div>
-                      <div className="space-y-0.5 pl-2 border-l">
-                        <p className="text-[8px] uppercase font-bold text-muted-foreground">Deadline</p>
-                        <p className="text-[10px] font-semibold">{project.deadline}</p>
+                      <div className="space-y-0.5 pl-2 border-l border-muted/20">
+                        <p className="text-[8px] uppercase font-bold text-muted-foreground flex items-center gap-1"><Clock className="h-2 w-2" /> Deadline</p>
+                        <p className="text-[10px] font-semibold">{project.deadline || "N/A"}</p>
                       </div>
                     </div>
+
                     
                     {/* Project Footer Actions */}
                     <div className="flex items-center gap-1.5 pt-2 border-t border-muted/20">

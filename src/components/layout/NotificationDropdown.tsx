@@ -23,14 +23,7 @@ export interface AppNotification {
   read: boolean;
 }
 
-const initialNotifications: AppNotification[] = [
-  { id: "1", type: "admin", title: "New Project Assigned", message: "Admin assigned you a new project: Cloud Migration.", project: "Cloud Migration", timestamp: "5 mins ago", read: false },
-  { id: "2", type: "admin", title: "New Task Assigned", message: "Admin assigned a new task: OAuth Integration.", project: "Security Infrastructure", timestamp: "1 hour ago", read: false },
-  { id: "3", type: "team", title: "Task Completed", message: "Sarah Chen completed the task: Legacy DB Indexing Audit.", project: "Cloud Migration", timestamp: "2 hours ago", read: true },
-  { id: "4", type: "team", title: "Task Delayed", message: "Mike Chen marked the task UI Polish as delayed.", project: "SaaS Dashboard", timestamp: "3 hours ago", read: false },
-  { id: "5", type: "alert", title: "Overdue Tasks", message: "2 tasks are overdue in SaaS Dashboard.", project: "SaaS Dashboard", timestamp: "Yesterday", read: false },
-  { id: "6", type: "team", title: "New Comment", message: "David Kim commented on S3 Bucket Setup.", project: "Cloud Migration", timestamp: "Yesterday", read: true },
-];
+const initialNotifications: AppNotification[] = [];
 
 export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications);

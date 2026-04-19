@@ -1,10 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
-  BarChart3, Calendar, Clock, Filter, Search, 
-  TrendingUp, AlertTriangle, CheckCircle2, 
-  LayoutDashboard, MoreVertical, RefreshCw, Eye,
-  LayoutGrid, List, Activity, GanttChart, Users,
-  CalendarDays, UserPlus
+  Search, Filter, RefreshCw, BarChart3, Clock, 
+  Calendar, Users, AlertTriangle, ChevronDown, CheckCircle2,
+  TrendingUp, Award, ListChecks, Target, XCircle, FileText
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,325 +11,470 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter
-} from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
-
-const monitoredProjects = [
-  { id: "M1", name: "Cloud Migration", manager: "Sarah Chen", progress: 65, status: "On-Time", priority: "High", timeline: "Jan - Apr", risk: "Low", deadline: "2024-05-15", teamSize: 8, load: "Medium" },
-  { id: "M2", name: "SaaS Dashboard Redesign", manager: "David Kim", progress: 42, status: "Delayed", priority: "Medium", timeline: "Feb - Jun", risk: "High", deadline: "2024-04-12", teamSize: 5, load: "High" },
-  { id: "M3", name: "Mobile App v2.0", manager: "Unassigned", progress: 0, status: "In Setup", priority: "High", timeline: "Mar - Sep", risk: "None", deadline: "2024-09-30", teamSize: 0, load: "None" },
-  { id: "M4", name: "Security Infrastructure", manager: "Lisa Wang", progress: 88, status: "In Progress", priority: "High", timeline: "Jan - May", risk: "Low", deadline: "2024-06-10", teamSize: 12, load: "High" },
-  { id: "M5", name: "Legacy System Audit", manager: "Sarah Chen", progress: 95, status: "On-Time", priority: "Low", timeline: "Jan - Mar", risk: "None", deadline: "2024-03-25", teamSize: 3, load: "Low" },
-];
-
-const statusStyles = {
-  "On-Time": "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-  "In Progress": "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
-  "Delayed": "bg-rose-500/10 text-rose-600 border-rose-500/20 animate-pulse",
-  "In Setup": "bg-secondary/50 text-muted-foreground border-border/50",
-};
 
 export default function MonitoringPage() {
   const navigate = useNavigate();
+  const [projects, setProjects] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
 
-  const [isExtendOpen, setIsExtendOpen] = useState(false);
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<any>(null);
-  const [newDeadline, setNewDeadline] = useState("");
+  const loadData = () => {
+    const p = localStorage.getItem("app_projects_persistence");
+    setProjects(p ? JSON.parse(p) : []);
+  };
 
-  const getDeadlineStatus = (deadlineStr: string) => {
-    const deadline = new Date(deadlineStr);
-    const today = new Date();
-    const diffTime = deadline.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  useEffect(() => {
+    loadData();
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "app_projects_persistence") loadData();
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
-    if (diffDays < 0) {
-      return { text: `Overdue by ${Math.abs(diffDays)} days`, color: "text-rose-600 font-black", icon: <AlertTriangle className="h-3 w-3" /> };
-    } else if (diffDays <= 7) {
-      return { text: `${diffDays} days left`, color: "text-amber-600 font-black", icon: <Clock className="h-3 w-3" /> };
+  // ── Helper to calculate progress logic ────────────────────────────────
+  // Returns: { hasStarted, expectedProgress, actualProgress, status }
+  const getProjectProgress = (p: any) => {
+    const total = p.totalTasks || 0;
+    const comp = p.completedTasks || 0;
+    
+    if (total === 0) {
+      return { hasStarted: false, expectedProgress: 0, actualProgress: 0, status: "Pending" };
     }
-    return { text: `${diffDays} days left`, color: "text-emerald-600 font-bold", icon: <CalendarDays className="h-3 w-3" /> };
+
+    const actualProgress = Math.round((comp / total) * 100);
+
+    const start = new Date(p.startDate || new Date());
+    const end = new Date(p.deadline || new Date());
+    const today = new Date();
+
+    let expectedProgress = 0;
+    if (today >= end) expectedProgress = 100;
+    else if (today <= start) expectedProgress = 0;
+    else {
+      const totalDays = end.getTime() - start.getTime();
+      const elapsedDays = today.getTime() - start.getTime();
+      expectedProgress = Math.round((elapsedDays / totalDays) * 100);
+    }
+
+    let status = "On Track";
+    if (actualProgress > expectedProgress) status = "Ahead";
+    else if (actualProgress < expectedProgress) status = "Behind";
+
+    return { hasStarted: true, expectedProgress, actualProgress, status };
   };
 
-  const handleExtend = () => {
-    if (!newDeadline) return toast.error("Please select a date");
-    toast.success(`Deadline for "${selectedProject?.name}" extended to ${newDeadline}`);
-    setIsExtendOpen(false);
-  };
+  // ── Transform projects to include analytics ─────────────────────────────
+  const enrichedProjects = useMemo(() => {
+    return projects.map(p => {
+      const prog = getProjectProgress(p);
+      
+      let managerPerf = null;
+      let teamPerf = null;
+      let members = p.teamMembers || [];
 
-  const handleReview = () => {
-    toast.success(`Audit log generated for "${selectedProject?.name}"`);
-    setIsReviewOpen(false);
-  };
+      if (prog.hasStarted) {
+        const total = p.totalTasks || 1;
+        const comp = p.completedTasks || 0;
+        const delayed = p.delayedTasks || 0;
 
-  const filtered = monitoredProjects.filter(p => 
-    (statusFilter === "All" || p.status === statusFilter) &&
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+        // Formula 40% Progress Score, 30% Team Completion, 20% OnTime, 10% Delay Control
+        const progressScore = prog.expectedProgress === 0 ? 100 : Math.min(100, Math.round((prog.actualProgress / prog.expectedProgress) * 100));
+        const completionRate = Math.round((comp / total) * 100);
+        // Synthesize on-time delivery from total vs delayed
+        const onTimeDelivery = Math.max(0, Math.round(((total - delayed) / total) * 100));
+        const delayControl = Math.max(0, 100 - Math.round((delayed / total) * 100));
+
+        const managerScore = Math.round(
+          (progressScore * 0.4) + 
+          (completionRate * 0.3) + 
+          (onTimeDelivery * 0.2) + 
+          (delayControl * 0.1)
+        );
+
+        let managerStatus = "Average";
+        if (managerScore >= 90) managerStatus = "Excellent";
+        else if (managerScore >= 75) managerStatus = "Good";
+        else if (managerScore < 50) managerStatus = "Needs Attention";
+
+        managerPerf = {
+          score: managerScore,
+          status: managerStatus,
+          progressScore,
+          completionRate,
+          onTimeDelivery,
+          delayControl
+        };
+
+        const teamEfficiency = Math.round((completionRate * 0.6) + (onTimeDelivery * 0.4));
+        teamPerf = { efficiency: teamEfficiency, comp, delayed, pending: total - comp };
+
+        // Ensure fake team members if none exist but tasks do
+        if (members.length === 0) {
+          members = [
+            { name: "Team Lead", assignedCount: total, comp, delayed, pending: total - comp, efficiency: teamEfficiency }
+          ];
+        } else {
+          members = members.map((m: any) => {
+            const mTotal = m.assignedCount || 1;
+            const mComp = m.completedTasks || 0;
+            const mDel = m.delayedTasks || 0;
+            const mOnTime = Math.max(0, 100 - Math.round((mDel / mTotal) * 100));
+            const mCompRate = Math.round((mComp / mTotal) * 100);
+            const mEff = Math.round((mCompRate * 0.6) + (mOnTime * 0.4));
+            return {
+              ...m,
+              assignedCount: mTotal,
+              completedTasks: mComp,
+              delayedTasks: mDel,
+              pendingTasks: mTotal - mComp,
+              onTimeRate: mOnTime,
+              efficiency: mEff
+            };
+          });
+        }
+      }
+
+      return { ...p, prog, managerPerf, teamPerf, members };
+    });
+  }, [projects]);
+
+  // ── Summaries ──────────────────────────────────────────────────────────
+  const summary = useMemo(() => {
+    let active = 0, onTrack = 0, behind = 0;
+    enrichedProjects.forEach(p => {
+      if (p.status === "Active" || p.status === "Pending") active++;
+      if (p.prog.status === "On Track" || p.prog.status === "Ahead") onTrack++;
+      if (p.prog.status === "Behind") behind++;
+    });
+    return {
+      total: enrichedProjects.length,
+      active,
+      onTrack,
+      behind
+    };
+  }, [enrichedProjects]);
+
+  // ── Filtered List ──────────────────────────────────────────────────────
+  const filtered = enrichedProjects.filter(p => {
+    const matchSearch = 
+      (p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (p.manager || "").toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (statusFilter === "All") return matchSearch;
+    if (statusFilter === "Active") return matchSearch && (p.status === "Active" || p.status === "Pending");
+    if (statusFilter === "Completed") return matchSearch && p.status === "Completed";
+    if (statusFilter === "On Track") return matchSearch && p.prog.status === "On Track";
+    if (statusFilter === "Ahead") return matchSearch && p.prog.status === "Ahead";
+    if (statusFilter === "Behind") return matchSearch && p.prog.status === "Behind";
+    return matchSearch;
+  });
+
+  const getStatusColor = (status: string) => {
+    if (status === "Ahead") return "bg-emerald-500/10 text-emerald-600";
+    if (status === "On Track") return "bg-indigo-500/10 text-indigo-600";
+    if (status === "Behind") return "bg-rose-500/10 text-rose-600";
+    return "bg-secondary/50 text-muted-foreground";
+  };
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10 pt-5">
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-           <h1 className="text-2xl font-black tracking-tight text-foreground">
-             Project Monitoring
-           </h1>
+          <h1 className="text-2xl font-black tracking-tight text-foreground">Monitoring Hub</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Live tracking for project, manager, and team performance metrics.</p>
         </div>
-        
-        <div className="flex flex-wrap items-center gap-2">
-           <Button variant="outline" size="sm" className="gap-2 h-8 rounded-xl font-bold text-xs" onClick={() => toast.info("Syncing monitor data...")}>
-              <RefreshCw className="h-3.5 w-3.5" /> Refresh
-           </Button>
-        </div>
+        <Button variant="outline" size="sm" className="gap-2 rounded-xl h-8 text-xs font-bold" onClick={loadData}>
+          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        </Button>
       </div>
 
-      {/* Control Bar */}
-      <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-card/50 backdrop-blur-sm p-3 rounded-2xl border shadow-sm">
-         <div className="relative w-full lg:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input 
-              placeholder="Search active monitor..." 
-              className="pl-9 h-8 border-none bg-background rounded-xl text-xs"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-         </div>
-         <div className="flex items-center gap-2 w-full lg:w-auto">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-               <SelectTrigger className="h-8 rounded-xl border-none bg-background w-full lg:w-40 text-xs font-bold">
-                  <SelectValue placeholder="All Status" />
-               </SelectTrigger>
-               <SelectContent className="rounded-2xl shadow-2xl border-none p-1.5">
-                  <SelectItem value="All">All Projects</SelectItem>
-                  <SelectItem value="On-Time">On-Time</SelectItem>
-                  <SelectItem value="Delayed">Delayed</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-               </SelectContent>
-            </Select>
-            <Button variant="secondary" className="h-8 rounded-xl px-3 gap-2 flex-1 lg:flex-none text-[10px] font-black uppercase tracking-widest">
-               <Filter className="h-3 w-3" /> Filters
-            </Button>
-         </div>
+      {/* ── Top Summary Section ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="border-none shadow-sm bg-card/60 rounded-2xl">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total Projects</p>
+              <p className="text-2xl font-black mt-1">{summary.total}</p>
+            </div>
+            <div className="h-10 w-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-600"><ListChecks className="h-5 w-5" /></div>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm bg-card/60 rounded-2xl">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Active / Setup</p>
+              <p className="text-2xl font-black mt-1">{summary.active}</p>
+            </div>
+            <div className="h-10 w-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-600"><Target className="h-5 w-5" /></div>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm bg-card/60 rounded-2xl">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase text-emerald-600/70 tracking-widest">On Track</p>
+              <p className="text-2xl font-black mt-1 text-emerald-600">{summary.onTrack}</p>
+            </div>
+            <div className="h-10 w-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-600"><CheckCircle2 className="h-5 w-5" /></div>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm bg-card/60 rounded-2xl">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase text-rose-600/70 tracking-widest">Behind Schedule</p>
+              <p className="text-2xl font-black mt-1 text-rose-600">{summary.behind}</p>
+            </div>
+            <div className="h-10 w-10 bg-rose-500/10 rounded-xl flex items-center justify-center text-rose-600"><AlertTriangle className="h-5 w-5" /></div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Risk Alert Header */}
-      <AnimatePresence>
-        {monitoredProjects.some(p => p.risk === 'High') && (
-           <motion.div 
-             initial={{ opacity: 0, y: -20 }}
-             animate={{ opacity: 1, y: 0 }}
-             exit={{ opacity: 0, scale: 0.95 }}
-             className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-2xl flex flex-col md:flex-row items-center gap-3 text-rose-600 mb-4 overflow-hidden relative"
-           >
-              <div className="absolute top-0 right-0 p-2 opacity-5 pointer-events-none">
-                 <AlertTriangle size={60} />
-              </div>
-              <div className="h-9 w-9 rounded-xl bg-rose-500/20 flex items-center justify-center shrink-0 animate-pulse">
-                 <AlertTriangle className="h-4 w-4" />
-              </div>
-              <div className="flex-1 text-center md:text-left">
-                 <p className="text-sm font-black uppercase tracking-tight">Strategic Alert: Operational Variance</p>
-                 <p className="text-[10px] font-bold opacity-80">2 Active projects are currently 12%+ behind schedule completion.</p>
-              </div>
-              <Button 
-                size="sm" 
-                className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl px-4 h-8 font-black uppercase text-[8px] tracking-widest border-none transition-all active:scale-95 shadow-md shadow-rose-600/10"
-                onClick={() => {
-                  setStatusFilter("Delayed");
-                  toast.success("Filtering high-risk projects");
-                }}
-              >
-                 Analyze All
-              </Button>
-           </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ── Search & Filter ─────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row items-center gap-3 bg-card/40 p-2 rounded-2xl border shadow-sm">
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search by project or manager..." 
+            className="pl-9 h-10 border-none bg-background rounded-xl text-sm font-semibold"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[180px] h-10 rounded-xl border-none bg-background font-bold">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl shadow-xl">
+            <SelectItem value="All">All Projects</SelectItem>
+            <SelectItem value="Active">Active</SelectItem>
+            <SelectItem value="Completed">Completed</SelectItem>
+            <SelectItem value="Ahead">Ahead</SelectItem>
+            <SelectItem value="On Track">On Track</SelectItem>
+            <SelectItem value="Behind">Behind Schedule</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-      {/* Monitoring Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-         {filtered.map((project, i) => {
-           const dl = getDeadlineStatus(project.deadline);
-           const isUnassigned = project.manager === "Unassigned";
-           const isUrgent = project.risk === 'High' || project.status === 'Delayed';
+      {/* ── Monitoring Cards ────────────────────────────────────────────── */}
+      {filtered.length === 0 ? (
+        <div className="py-20 text-center">
+          <div className="h-16 w-16 bg-secondary/30 rounded-2xl mx-auto flex items-center justify-center mb-4">
+            <XCircle className="h-8 w-8 text-muted-foreground/30" />
+          </div>
+          <h3 className="font-black text-xl text-foreground/40">No Projects Found</h3>
+          <p className="text-xs font-semibold text-muted-foreground mt-1">Try adjusting your filters or creating a new project.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filtered.map((project) => {
+            const isExpanded = expandedProjectId === project.id;
+            const prog = project.prog;
+            const perfColor = prog.status === "Behind" ? "bg-rose-500" : (prog.status === "Ahead" ? "bg-emerald-500" : "bg-indigo-500");
 
-           return (
-             <motion.div 
-               key={project.id}
-               initial={{ opacity: 0, y: 10 }}
-               animate={{ opacity: 1, y: 0 }}
-               transition={{ delay: i * 0.05 }}
-             >
-                <Card className={`border-none shadow-sm bg-card/60 backdrop-blur-sm group hover:shadow-md transition-all rounded-2xl overflow-hidden relative ${isUnassigned ? 'bg-rose-500/[0.02] border-rose-500/10' : ''} ${isUrgent ? 'ring-1 ring-rose-500/10' : ''}`}>
-                   {isUrgent && (
-                      <div className="absolute left-0 top-0 h-full w-1 bg-rose-500/50" />
-                   )}
-                   <div className="p-3 space-y-3">
-                      <div className="flex items-center justify-between gap-2">
-                         <div className="flex-1 min-w-0">
-                            <CardTitle className="text-sm font-black truncate text-foreground/90 leading-tight mb-0.5">{project.name}</CardTitle>
-                            <div className="flex items-center gap-1.5 overflow-hidden">
-                               <Badge variant="outline" className={`text-[7px] rounded-sm uppercase px-1 h-3.5 border-none font-black ${statusStyles[project.status as keyof typeof statusStyles]}`}>
-                                  {project.status}
-                               </Badge>
-                               <span className={`text-[8px] font-bold truncate ${isUnassigned ? 'text-rose-600' : 'text-muted-foreground'}`}>
-                                 {isUnassigned ? "NO MANAGER" : project.manager}
-                               </span>
+            return (
+              <Card key={project.id} className={`border-none shadow-sm rounded-3xl overflow-hidden transition-all relative ${isExpanded ? 'ring-2 ring-indigo-500/20' : 'hover:shadow-md'}`}>
+                {/* ── Main Visible Card ── */}
+                <div className="p-5 flex flex-col gap-5 bg-card">
+                  
+                  {/* Top Header: Identity & Actions */}
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-border/40 pb-4">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-black tracking-tight">{project.name}</h3>
+                        <Badge className={`border-none text-[8px] px-1.5 py-0.5 rounded-sm uppercase tracking-widest ${getStatusColor(prog.status)}`}>
+                          {prog.status}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-muted-foreground bg-secondary/30 px-2 py-1 rounded-lg">
+                          <Users className="h-3 w-3" /> {project.manager || "Unassigned"}
+                        </div>
+                        {project.priority && (
+                          <div className="text-[10px] font-black uppercase text-muted-foreground px-2 py-1 bg-secondary/30 rounded-lg">
+                            Priority: {project.priority}
+                          </div>
+                        )}
+                        <div className="text-[10px] font-black uppercase text-muted-foreground px-2 py-1 bg-secondary/30 rounded-lg flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> {project.startDate} — {project.deadline}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button variant="secondary" className="h-8 text-[10px] font-black gap-2 uppercase tracking-widest rounded-xl hover:bg-slate-200" onClick={() => navigate('/reports')}>
+                        <FileText className="h-3.5 w-3.5" /> Report
+                      </Button>
+                      {prog.hasStarted && (
+                        <Button className="h-8 text-[10px] font-black gap-2 uppercase tracking-widest rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 text-white" onClick={() => setExpandedProjectId(isExpanded ? null : project.id)}>
+                          <BarChart3 className="h-3.5 w-3.5" /> {isExpanded ? "Close" : "View Details"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Body: Analytics Modules */}
+                  {prog.hasStarted && project.managerPerf && project.teamPerf ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      
+                      {/* 1. Progress Tracking */}
+                      <div className="bg-secondary/10 p-4 rounded-2xl border border-secondary/20">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" /> Progress Tracking
+                        </p>
+                        <div className="space-y-4">
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-[10px] font-bold">
+                              <span className="text-muted-foreground">Expected Progress</span>
+                              <span>{prog.expectedProgress}%</span>
                             </div>
-                         </div>
-                         <DropdownMenu>
-                           <DropdownMenuTrigger asChild>
-                             <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md hover:bg-secondary shrink-0">
-                               <MoreVertical className="h-3 w-3" />
-                             </Button>
-                           </DropdownMenuTrigger>
-                           <DropdownMenuContent align="end" className="rounded-xl border-none shadow-2xl p-1 min-w-[120px]">
-                             <DropdownMenuItem className="rounded-lg gap-2 font-bold text-[9px]" onClick={() => navigate('/assign-manager')}>
-                               Reassign
-                             </DropdownMenuItem>
-                             <DropdownMenuItem className="rounded-lg gap-2 font-bold text-[9px]" onClick={() => {
-                               setSelectedProject(project);
-                               setNewDeadline(project.deadline);
-                               setIsExtendOpen(true);
-                             }}>
-                               Extend
-                             </DropdownMenuItem>
-                           </DropdownMenuContent>
-                         </DropdownMenu>
+                            <Progress value={prog.expectedProgress} className="h-1.5 bg-secondary/40 [&>div]:bg-slate-400" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-[10px] font-black">
+                              <span>Actual Progress</span>
+                              <span className={prog.status === "Behind" ? "text-rose-600" : "text-emerald-600"}>{prog.actualProgress}%</span>
+                            </div>
+                            <Progress value={prog.actualProgress} className={`h-1.5 bg-secondary/40 [&>div]:${perfColor}`} />
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="space-y-1.5">
-                         <div className="flex items-center justify-between text-[8px] font-black uppercase text-muted-foreground/40">
-                            <span className="flex items-center gap-1"><TrendingUp className="h-2.5 w-2.5" /> Progress</span>
-                            <span>{project.progress}%</span>
-                         </div>
-                         <Progress value={project.progress} className={`h-1 rounded-full overflow-hidden bg-secondary/30 ${project.progress > 80 ? '[&>div]:bg-emerald-500' : (isUrgent ? '[&>div]:bg-rose-500' : '[&>div]:bg-indigo-600')}`} />
+                      {/* 2. Manager Performance */}
+                      <div className="bg-secondary/10 p-4 rounded-2xl border border-secondary/20 flex gap-4 items-center">
+                        <div className="shrink-0 flex flex-col items-center justify-center">
+                           <div className="relative h-14 w-14 flex items-center justify-center">
+                              <svg className="h-14 w-14 transform -rotate-90">
+                                 <circle cx="28" cy="28" r="24" fill="transparent" stroke="currentColor" strokeWidth="5" className="text-secondary/20" />
+                                 <circle
+                                   cx="28" cy="28" r="24" fill="transparent" stroke="currentColor" strokeWidth="5"
+                                   strokeDasharray={151} 
+                                   strokeDashoffset={151 - (151 * project.managerPerf.score) / 100}
+                                   strokeLinecap="round" className="text-indigo-600"
+                                 />
+                              </svg>
+                              <span className="absolute text-[11px] font-black">{project.managerPerf.score}%</span>
+                           </div>
+                           <Badge variant="outline" className={`mt-2 border-none text-[7px] font-black uppercase tracking-widest ${
+                             project.managerPerf.status === "Excellent" ? "bg-emerald-500/10 text-emerald-600" :
+                             project.managerPerf.status === "Needs Attention" ? "bg-rose-500/10 text-rose-600" :
+                             "bg-amber-500/10 text-amber-600"
+                           }`}>{project.managerPerf.status}</Badge>
+                        </div>
+                        <div className="flex-1 grid grid-cols-2 gap-x-2 gap-y-2">
+                           <div>
+                             <p className="text-[8px] font-bold text-muted-foreground uppercase">Progress</p>
+                             <p className="text-xs font-black">{project.managerPerf.progressScore}%</p>
+                           </div>
+                           <div>
+                             <p className="text-[8px] font-bold text-muted-foreground uppercase">Team Comp</p>
+                             <p className="text-xs font-black">{project.managerPerf.completionRate}%</p>
+                           </div>
+                           <div>
+                             <p className="text-[8px] font-bold text-muted-foreground uppercase">On-Time</p>
+                             <p className="text-xs font-black">{project.managerPerf.onTimeDelivery}%</p>
+                           </div>
+                           <div>
+                             <p className="text-[8px] font-bold text-muted-foreground uppercase">Delay Ctrl</p>
+                             <p className="text-xs font-black">{project.managerPerf.delayControl}%</p>
+                           </div>
+                        </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/5">
-                         <div className="flex flex-col">
-                            <p className="text-[7px] uppercase font-black text-muted-foreground/40">Deadline</p>
-                            <span className={`text-[8px] font-black uppercase ${dl.color} flex items-center gap-1`}>
-                               {dl.text.split(" left")[0]}
-                            </span>
-                         </div>
-                         <div className="flex items-center gap-1">
-                            {isUnassigned ? (
-                              <Button 
-                                onClick={() => navigate('/assign-manager')}
-                                className="h-6 px-3 rounded-lg bg-rose-600 hover:bg-rose-700 font-black uppercase text-[7px] tracking-widest border-none"
-                              >
-                                Assign
-                              </Button>
-                            ) : (
-                              <Button 
-                                size="sm" 
-                                className="h-6 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 font-black uppercase text-[7px] tracking-widest border-none"
-                                onClick={() => {
-                                  setSelectedProject(project);
-                                  setIsReviewOpen(true);
-                                }}
-                              >
-                                Review
-                              </Button>
-                            )}
-                         </div>
+                      {/* 3. Team Performance Overview */}
+                      <div className="bg-secondary/10 p-4 rounded-2xl border border-secondary/20">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-1">
+                          <Users className="h-3 w-3" /> Team Performance
+                        </p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex justify-between items-end border-b border-secondary/30 pb-1">
+                             <p className="text-[9px] font-black uppercase text-muted-foreground">Members</p>
+                             <p className="text-sm font-black text-slate-700 dark:text-slate-200">{project.members.length}</p>
+                          </div>
+                          <div className="flex justify-between items-end border-b border-emerald-500/20 pb-1">
+                             <p className="text-[9px] font-black uppercase text-emerald-600/70">Efficiency</p>
+                             <p className="text-sm font-black text-emerald-600">{project.teamPerf.efficiency}%</p>
+                          </div>
+                          <div className="flex justify-between items-end border-b border-secondary/30 pb-1">
+                             <p className="text-[9px] font-black uppercase text-muted-foreground">Completed</p>
+                             <p className="text-sm font-black text-indigo-600">{project.teamPerf.comp}</p>
+                          </div>
+                          <div className="flex justify-between items-end border-b border-rose-500/20 pb-1">
+                             <p className="text-[9px] font-black uppercase text-rose-600/70">Delayed</p>
+                             <p className="text-sm font-black text-rose-600">{project.teamPerf.delayed}</p>
+                          </div>
+                          <div className="flex justify-between items-end border-b border-secondary/30 pb-1 col-span-2">
+                             <p className="text-[9px] font-black uppercase text-muted-foreground">Pending Tasks</p>
+                             <p className="text-sm font-black text-amber-600">{project.teamPerf.pending}</p>
+                          </div>
+                        </div>
                       </div>
-                   </div>
-                </Card>
-             </motion.div>
-           );
-         })}
-      </div>
 
-      {/* Extend Deadline Modal */}
-      <Dialog open={isExtendOpen} onOpenChange={setIsExtendOpen}>
-        <DialogContent className="sm:max-w-[320px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-white">
-          <DialogHeader className="bg-indigo-600 p-4 text-white text-left">
-            <DialogTitle className="text-base font-bold">Timeline Extension</DialogTitle>
-            <DialogDescription className="text-indigo-100/70 text-[10px] italic">Adjust project completion parameters.</DialogDescription>
-          </DialogHeader>
-          
-          <div className="p-4 space-y-4">
-             <div className="space-y-1.5">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Project Name</p>
-                <p className="text-xs font-bold truncate bg-secondary/20 p-2 rounded-lg italic text-foreground">
-                  {selectedProject?.name}
-                </p>
-             </div>
-             <div className="space-y-1.5">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">New Deadline</p>
-                <Input 
-                  type="date"
-                  value={newDeadline}
-                  onChange={e => setNewDeadline(e.target.value)}
-                  className="h-8 rounded-xl border-secondary bg-secondary/10 text-xs font-bold"
-                />
-             </div>
-          </div>
-
-          <DialogFooter className="p-4 pt-0 flex gap-2 justify-end">
-             <Button variant="ghost" className="h-8 px-4 rounded-xl text-[10px] font-bold" onClick={() => setIsExtendOpen(false)}>Cancel</Button>
-             <Button className="h-8 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20" onClick={handleExtend}>
-                Update
-             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Review Project Modal */}
-      <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-        <DialogContent className="sm:max-w-[350px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-white">
-          <DialogHeader className="bg-emerald-600 p-4 text-white text-left">
-            <DialogTitle className="text-base font-bold">Deep Health Audit</DialogTitle>
-            <DialogDescription className="text-emerald-100/70 text-[10px] italic">Strategic overview of project parameters.</DialogDescription>
-          </DialogHeader>
-          
-          <div className="p-4 space-y-4">
-             <div className="grid grid-cols-2 gap-3">
-                <div className="bg-secondary/10 p-3 rounded-xl border border-secondary/20">
-                   <p className="text-[8px] font-black uppercase text-muted-foreground/60">Operational Risk</p>
-                   <p className={`text-xs font-black mt-0.5 ${selectedProject?.risk === 'High' ? 'text-rose-600' : 'text-emerald-600'}`}>
-                     {selectedProject?.risk}
-                   </p>
+                    </div>
+                  ) : null}
                 </div>
-                <div className="bg-secondary/10 p-3 rounded-xl border border-secondary/20">
-                   <p className="text-[8px] font-black uppercase text-muted-foreground/60">Resource Load</p>
-                   <p className="text-xs font-black mt-0.5 text-indigo-600">
-                     {selectedProject?.load}
-                   </p>
-                </div>
-             </div>
-             <div className="space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Manager Commentary</p>
-                <p className="text-[10px] font-medium leading-relaxed italic text-muted-foreground bg-secondary/5 p-3 rounded-xl">
-                  Project is currently tracking according to adjusted bandwidth. No critical roadblocks detected in last 24h.
-                </p>
-             </div>
-          </div>
 
-          <DialogFooter className="p-4 pt-0 flex gap-2 justify-end">
-             <Button variant="outline" className="h-8 px-6 rounded-xl text-[10px] font-bold border-none bg-emerald-500/10 text-emerald-600" onClick={handleReview}>
-                Approve Audit
-             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                {/* ── Expanded Team Details ── */}
+                <AnimatePresence>
+                  {isExpanded && prog.hasStarted && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="border-t border-border/40 bg-secondary/5"
+                    >
+                      <div className="p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <ListChecks className="h-4 w-4 text-indigo-500" />
+                          <h4 className="text-xs font-black uppercase tracking-widest text-indigo-900 dark:text-indigo-300">Detailed Member Breakdown</h4>
+                        </div>
+                        <div className="rounded-2xl border border-border/50 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                              <thead className="bg-secondary/30">
+                                <tr>
+                                  <th className="py-3 px-5 text-[9px] font-black text-muted-foreground uppercase tracking-widest">Team Member Name</th>
+                                  <th className="py-3 px-5 text-[9px] font-black text-muted-foreground uppercase tracking-widest text-center">Assigned Tasks</th>
+                                  <th className="py-3 px-5 text-[9px] font-black text-muted-foreground uppercase tracking-widest text-center">Completed</th>
+                                  <th className="py-3 px-5 text-[9px] font-black text-muted-foreground uppercase tracking-widest text-center">Pending</th>
+                                  <th className="py-3 px-5 text-[9px] font-black text-rose-600/70 uppercase tracking-widest text-center">Delayed</th>
+                                  <th className="py-3 px-5 text-[9px] font-black text-muted-foreground uppercase tracking-widest text-center">On-Time %</th>
+                                  <th className="py-3 px-5 text-[9px] font-black text-indigo-600/70 uppercase tracking-widest text-right">Efficiency %</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border/30">
+                                {project.members.map((m: any, idx: number) => (
+                                  <tr key={idx} className="hover:bg-secondary/10 transition-colors">
+                                    <td className="py-3 px-5">
+                                      <span className="text-xs font-bold text-foreground">{m.name}</span>
+                                    </td>
+                                    <td className="py-3 px-5 text-center font-bold text-xs">{m.assignedCount}</td>
+                                    <td className="py-3 px-5 text-center font-bold text-xs text-emerald-600">{m.completedTasks}</td>
+                                    <td className="py-3 px-5 text-center font-bold text-xs text-amber-600">{m.pendingTasks}</td>
+                                    <td className="py-3 px-5 text-center font-bold text-xs text-rose-600">{m.delayedTasks}</td>
+                                    <td className="py-3 px-5 text-center font-bold text-xs">{m.onTimeRate}%</td>
+                                    <td className="py-3 px-5 text-right">
+                                      <Badge className={`text-[10px] font-black px-2 py-0.5 border-none ${m.efficiency >= 80 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-indigo-500/10 text-indigo-600'}`}>
+                                        {m.efficiency}%
+                                      </Badge>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

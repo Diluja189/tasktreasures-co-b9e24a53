@@ -2,12 +2,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { CheckSquare, MessageSquare } from "lucide-react";
 
-const approvals = [
-  { task: "Homepage Redesign", employee: "James Wilson", project: "E-Commerce Platform", submitted: "2h ago", priority: "High" },
-  { task: "API Documentation", employee: "Emily Davis", project: "Data Pipeline", submitted: "4h ago", priority: "Medium" },
-  { task: "Unit Tests - Auth", employee: "Mike Chen", project: "E-Commerce Platform", submitted: "1d ago", priority: "High" },
-  { task: "Mobile Onboarding Flow", employee: "Lisa Wang", project: "Mobile App v3.0", submitted: "1d ago", priority: "Critical" },
-];
+const approvals = [];
 
 const priorityColors: Record<string, string> = {
   Low: "bg-muted text-muted-foreground", Medium: "bg-info/10 text-info",

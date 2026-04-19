@@ -24,13 +24,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const tasksData = [
-  { id: "T1", name: "AWS S3 Bucket Config", project: "Cloud Migration", priority: "High", deadline: "2026-04-16", assignee: "Sarah Chen", status: "In Progress", hours: 4 },
-  { id: "T2", name: "OAuth2 Provider Integration", project: "Security Infrastructure", priority: "High", deadline: "2026-04-20", assignee: "David Kim", status: "Not Started", hours: 12 },
-  { id: "T3", name: "Chart.js Theme Registry", project: "SaaS Dashboard Phase 2", priority: "Medium", deadline: "2026-04-25", assignee: "Unassigned", status: "Not Started", hours: 8 },
-  { id: "T4", name: "Legacy DB Indexing Audit", project: "Cloud Migration", priority: "High", deadline: "2026-04-15", assignee: "Sarah Chen", status: "Completed", hours: 6 },
-  { id: "T5", name: "UI Polish - Sidebar Motion", project: "SaaS Dashboard Phase 2", priority: "Low", deadline: "2026-05-01", assignee: "Mike Chen", status: "In Progress", hours: 16 },
-];
+const tasksData = [];
 
 const priorityStyles = {
   "High": "bg-rose-500/10 text-rose-600 border-none",
@@ -140,10 +134,9 @@ export default function ManagerTasksPage() {
                              <SelectTrigger className="rounded-xl border border-border/50 bg-secondary/10 h-11 font-medium">
                                 <SelectValue placeholder="Select Project" />
                              </SelectTrigger>
-                             <SelectContent className="rounded-2xl border-none shadow-xl">
-                                <SelectItem value="cloud">Cloud Migration</SelectItem>
-                                <SelectItem value="saas">SaaS Dashboard</SelectItem>
-                             </SelectContent>
+                              <SelectContent className="rounded-2xl border-none shadow-xl">
+                                 {/* Projects dynamic */}
+                              </SelectContent>
                           </Select>
                        </div>
                        <div className="space-y-2">
@@ -248,7 +241,9 @@ export default function ManagerTasksPage() {
                  <SelectTrigger className="h-10 rounded-xl border-none bg-background w-[140px] text-xs font-bold">
                     <SelectValue placeholder="Project" />
                  </SelectTrigger>
-                 <SelectContent className="rounded-2xl border-none shadow-2xl p-1.5"><SelectItem value="All">All Projects</SelectItem><SelectItem value="Cloud Migration">Cloud Migration</SelectItem><SelectItem value="Security Infrastructure">Security Infrastructure</SelectItem><SelectItem value="SaaS Dashboard Phase 2">SaaS Dashboard</SelectItem></SelectContent>
+                  <SelectContent className="rounded-2xl border-none shadow-2xl p-1.5">
+                    <SelectItem value="All">All Projects</SelectItem>
+                  </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                  <SelectTrigger className="h-10 rounded-xl border-none bg-background w-[130px] text-xs font-bold">
@@ -266,7 +261,10 @@ export default function ManagerTasksPage() {
                  <SelectTrigger className="h-10 rounded-xl border-none bg-background w-[130px] text-xs font-bold">
                     <SelectValue placeholder="Assignee" />
                  </SelectTrigger>
-                 <SelectContent className="rounded-2xl border-none shadow-2xl p-1.5"><SelectItem value="All">All Assignees</SelectItem><SelectItem value="Unassigned">Unassigned</SelectItem><SelectItem value="Sarah Chen">Sarah Chen</SelectItem><SelectItem value="David Kim">David Kim</SelectItem><SelectItem value="Mike Chen">Mike Chen</SelectItem></SelectContent>
+                 <SelectContent className="rounded-2xl border-none shadow-2xl p-1.5">
+                    <SelectItem value="All">All Assignees</SelectItem>
+                    <SelectItem value="Unassigned">Unassigned</SelectItem>
+                  </SelectContent>
               </Select>
               <div className="h-8 w-px bg-border/50 hidden xl:block" />
               <div className="hidden xl:flex items-center gap-1 bg-secondary/30 p-1 rounded-xl">

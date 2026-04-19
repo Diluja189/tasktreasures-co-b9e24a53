@@ -18,42 +18,48 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const navByRole: Record<UserRole, { label: string; items: { title: string; url: string; icon: any }[] }[]> = {
   admin: [
-    { label: "Core Operations", items: [
-      { title: "Dashboard", url: "/", icon: LayoutDashboard },
-      { title: "Projects", url: "/projects", icon: FolderKanban },
-      { title: "Assign Manager", url: "/assign-manager", icon: UserPlus },
-      { title: "Project Monitoring", url: "/monitoring", icon: Eye },
-    ]},
-    { label: "Human Resources", items: [
-      { title: "Managers", url: "/managers", icon: UserCircle },
-      { title: "Team Members", url: "/users", icon: Users },
-      { title: "Task Overview", url: "/tasks", icon: Kanban },
-    ]},
-    { label: "Intelligence & Compliance", items: [
-      { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
-      { title: "Notifications", url: "/notifications", icon: Bell },
-      { title: "Audit Logs", url: "/audit-logs", icon: FileText },
-      { title: "Settings", url: "/settings", icon: Settings },
-    ]},
+    {
+      label: "Management & Personnel", items: [
+        { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "Managers", url: "/managers", icon: UserCircle },
+        { title: "Projects", url: "/projects", icon: FolderKanban },
+        { title: "Assign Manager", url: "/assign-manager", icon: UserPlus },
+        { title: "Project Monitoring", url: "/monitoring", icon: Eye },
+        { title: "Team Members", url: "/users", icon: Users },
+        { title: "Task Overview", url: "/tasks", icon: Kanban },
+      ]
+    },
+    {
+      label: "Intelligence & Compliance", items: [
+        { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
+        { title: "Notifications", url: "/notifications", icon: Bell },
+        { title: "Audit Logs", url: "/audit-logs", icon: FileText },
+        { title: "Settings", url: "/settings", icon: Settings },
+      ]
+    },
   ],
   manager: [
-    { label: "Project Execution", items: [
-      { title: "Dashboard", url: "/", icon: LayoutDashboard },
-      { title: "My Projects", url: "/manager/projects", icon: FolderKanban },
-      { title: "Task Management", url: "/manager/tasks", icon: CheckSquare },
-      { title: "Team Assignment", url: "/manager/assignments", icon: UserPlus },
-      { title: "Progress Tracking", url: "/manager/tracking", icon: Kanban },
-      { title: "Status Reports", url: "/manager/reports", icon: FileText },
-      { title: "Audit Logs", url: "/audit-logs", icon: History },
-    ]},
+    {
+      label: "Project Execution", items: [
+        { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "My Projects", url: "/manager/projects", icon: FolderKanban },
+        { title: "Task Management", url: "/manager/tasks", icon: CheckSquare },
+        { title: "Team Assignment", url: "/manager/assignments", icon: UserPlus },
+        { title: "Progress Tracking", url: "/manager/tracking", icon: Kanban },
+        { title: "Status Reports", url: "/manager/reports", icon: FileText },
+        { title: "Audit Logs", url: "/audit-logs", icon: History },
+      ]
+    },
   ],
   user: [
-    { label: "My Work", items: [
-      { title: "Dashboard", url: "/", icon: LayoutDashboard },
-      { title: "My Tasks", url: "/member/tasks", icon: CheckSquare },
-      { title: "Time Tracking", url: "/member/time", icon: Clock },
-      { title: "Task Updates", url: "/member/updates", icon: FileText },
-    ]},
+    {
+      label: "My Work", items: [
+        { title: "Dashboard", url: "/", icon: LayoutDashboard },
+        { title: "My Tasks", url: "/member/tasks", icon: CheckSquare },
+        { title: "Time Tracking", url: "/member/time", icon: Clock },
+        { title: "Task Updates", url: "/member/updates", icon: FileText },
+      ]
+    },
   ],
 };
 
@@ -81,8 +87,8 @@ export function AppSidebar() {
               <FolderKanban className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-display text-sm font-semibold text-sidebar-accent-foreground">ProjectHub</h1>
-              <p className="text-[10px] text-sidebar-muted">Enterprise Suite</p>
+              <h1 className="font-display text-sm font-semibold text-sidebar-accent-foreground">IATS</h1>
+              <p className="text-[10px] text-sidebar-muted">Production Tracker</p>
             </div>
           </div>
         )}
@@ -168,7 +174,7 @@ export function AppSidebar() {
               <Users className="h-4 w-4 text-emerald-500" /> Team Member Access
             </DropdownMenuItem>
             <DropdownMenuSeparator className="my-2" />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="gap-2 text-destructive font-bold focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg py-2"
               onClick={() => {
                 navigate("/login");

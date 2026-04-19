@@ -17,13 +17,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 
-const assignedProjectsData = [
-  { id: "P1", name: "Cloud Migration", description: "Migrating legacy infrastructure to AWS cloud architecture.", progress: 65, status: "On-Time", deadline: "Apr 20, 2026", priority: "High", teamCapacity: 8, assignedMembers: 8, assignedBy: "Admin", pendingTasks: 12, overdueTasks: 0 },
-  { id: "P2", name: "SaaS Dashboard Phase 2", description: "Developing predictive analytics and real-time monitoring components.", progress: 42, status: "Delayed", deadline: "May 12, 2026", priority: "High", teamCapacity: 12, assignedMembers: 5, assignedBy: "Admin", pendingTasks: 24, overdueTasks: 3 },
-  { id: "P3", name: "Security Infrastructure", description: "Implementing Zero-Trust network protocols and hardware keys.", progress: 88, status: "On-Time", deadline: "Apr 28, 2026", priority: "High", teamCapacity: 6, assignedMembers: 6, assignedBy: "Admin", pendingTasks: 4, overdueTasks: 0 },
-  { id: "P4", name: "Customer Portal Redesign", description: "Refreshing the B2B customer self-service interface.", progress: 15, status: "At Risk", deadline: "Jun 15, 2026", priority: "Medium", teamCapacity: 5, assignedMembers: 2, assignedBy: "Admin", pendingTasks: 18, overdueTasks: 1 },
-  { id: "P5", name: "API Documentation Audit", description: "Standardizing internal endpoints and OpenAPI documentation.", progress: 95, status: "On-Time", deadline: "Apr 22, 2026", priority: "Low", teamCapacity: 3, assignedMembers: 3, assignedBy: "Admin", pendingTasks: 2, overdueTasks: 0 },
-];
+const assignedProjectsData = [];
 
 const statusStyles = {
   "On-Time": "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",

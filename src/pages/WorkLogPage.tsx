@@ -3,13 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-const workLogs = [
-  { date: "Jun 25, 2025", hours: 8.0, project: "E-Commerce Platform", tasks: "Auth module implementation", status: "Submitted" },
-  { date: "Jun 24, 2025", hours: 7.5, project: "Data Pipeline", tasks: "API tests, code review", status: "Approved" },
-  { date: "Jun 23, 2025", hours: 8.2, project: "E-Commerce Platform", tasks: "Payment integration", status: "Approved" },
-  { date: "Jun 22, 2025", hours: 6.5, project: "Mobile App v3.0", tasks: "Design review, feedback", status: "Approved" },
-  { date: "Jun 21, 2025", hours: 8.0, project: "CRM Integration", tasks: "DB migration scripts", status: "Pending" },
-];
+const workLogs = [];
 
 const statusColors: Record<string, string> = {
   Submitted: "bg-info/10 text-info", Approved: "bg-success/10 text-success", Pending: "bg-warning/10 text-warning",

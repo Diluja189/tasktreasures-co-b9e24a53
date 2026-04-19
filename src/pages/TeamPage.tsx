@@ -5,13 +5,7 @@ import { Users, BarChart3, CheckSquare } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useRole } from "@/contexts/RoleContext";
 
-const teamMembers = [
-  { name: "James Wilson", role: "Frontend Dev", tasks: 5, completed: 3, hours: 38, status: "Active" },
-  { name: "Emily Davis", role: "Backend Dev", tasks: 4, completed: 2, hours: 36, status: "Active" },
-  { name: "Mike Chen", role: "Full Stack", tasks: 6, completed: 5, hours: 40, status: "Active" },
-  { name: "Lisa Wang", role: "Data Engineer", tasks: 3, completed: 1, hours: 32, status: "On Leave" },
-  { name: "Tom Harris", role: "QA Engineer", tasks: 4, completed: 4, hours: 39, status: "Active" },
-];
+const teamMembers = [];
 
 const statusColors: Record<string, string> = { Active: "bg-success/10 text-success", "On Leave": "bg-warning/10 text-warning" };
 
@@ -23,7 +17,7 @@ const TeamPage = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="stat-card"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><Users className="h-4 w-4" />Total Members</div><p className="text-2xl font-display font-bold">{teamMembers.length}</p></div>
         <div className="stat-card"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><CheckSquare className="h-4 w-4" />Tasks Completed</div><p className="text-2xl font-display font-bold">{teamMembers.reduce((a, m) => a + m.completed, 0)}</p></div>
-        <div className="stat-card"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><BarChart3 className="h-4 w-4" />Avg Hours</div><p className="text-2xl font-display font-bold">{(teamMembers.reduce((a, m) => a + m.hours, 0) / teamMembers.length).toFixed(1)}</p></div>
+        <div className="stat-card"><div className="flex items-center gap-2 text-muted-foreground text-xs mb-1"><BarChart3 className="h-4 w-4" />Avg Hours</div><p className="text-2xl font-display font-bold">{teamMembers.length > 0 ? (teamMembers.reduce((a, m) => a + m.hours, 0) / teamMembers.length).toFixed(1) : "0.0"}</p></div>
       </div>
       <div className="glass-card rounded-xl divide-y divide-border">
         {teamMembers.map((m) => (

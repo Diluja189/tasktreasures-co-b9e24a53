@@ -1,4 +1,4 @@
-﻿import { motion } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Plus, LayoutDashboard, CheckCircle2, AlertCircle,
   Users, Clock, ArrowUpRight,
@@ -23,39 +23,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 /* â”€â”€â”€ Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-const stats = [
-  { title: "Assigned Projects", value: "05", icon: LayoutDashboard, color: "text-violet-600",  bg: "bg-violet-50",  trend: "+2 this month",     alert: false },
-  { title: "Total Tasks",       value: "48", icon: ListTodo,         color: "text-blue-600",    bg: "bg-blue-50",    trend: "12 pending",         alert: false },
-  { title: "In Progress",       value: "18", icon: Clock,            color: "text-amber-600",   bg: "bg-amber-50",   trend: "8 on priority",      alert: false },
-  { title: "Completed Tasks",   value: "24", icon: CheckCircle2,     color: "text-emerald-600", bg: "bg-emerald-50", trend: "92% success rate",   alert: false },
-  { title: "Overdue Tasks",     value: "06", icon: AlertCircle,      color: "text-rose-600",    bg: "bg-rose-50",    trend: "Action needed",      alert: true  },
-  { title: "Team Members",      value: "12", icon: Users,            color: "text-indigo-600",  bg: "bg-indigo-50",  trend: "All active",         alert: false },
-];
-
-const statusDistribution = [
-  { name: "Completed",  value: 24, color: "#10b981" },
-  { name: "In Progress",value: 18, color: "#8b5cf6" },
-  { name: "Pending",    value: 4,  color: "#f59e0b" },
-  { name: "Overdue",    value: 6,  color: "#f43f5e" },
-];
-
-const teamEfficiencyAuditData = [
-  { name: "Alex R.",    actual: 95,  estimated: 90 },
-  { name: "Jessica L.", actual: 100, estimated: 95 },
-  { name: "James W.",   actual: 60,  estimated: 85 },
-  { name: "Emily D.",   actual: 70,  estimated: 85 },
-  { name: "Michael K.", actual: 40,  estimated: 80 },
-  { name: "Sarah C.",   actual: 80,  estimated: 95 },
-];
-
-const performanceData = [
-  { name: "Alex Richardson", role: "Developer", assigned: 12, completed: 11, pending: 1, status: "Good",    project: "Cloud Migration"        },
-  { name: "Jessica Lane",    role: "Designer",  assigned: 8,  completed: 8,  pending: 0, status: "Good",    project: "SaaS Dashboard"         },
-  { name: "Sarah Chen",      role: "Manager",   assigned: 5,  completed: 4,  pending: 1, status: "Good",    project: "Enterprise Suite"       },
-  { name: "James Wilson",    role: "Tester",    assigned: 15, completed: 9,  pending: 6, status: "Average", project: "Cloud Migration"        },
-  { name: "Michael Kim",     role: "Developer", assigned: 10, completed: 4,  pending: 6, status: "Poor",    project: "SaaS Dashboard"         },
-  { name: "Emily Davis",     role: "Designer",  assigned: 10, completed: 7,  pending: 3, status: "Average", project: "Security Infrastructure"},
-];
+const stats = [];
+const statusDistribution = [];
+const teamEfficiencyAuditData = [];
+const performanceData = [];
 
 const statusBadge = (s: string) => ({
   Good:    "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",

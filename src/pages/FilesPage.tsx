@@ -3,12 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, FileText, Image, File } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-const files = [
-  { name: "design-specs.pdf", size: "2.4 MB", uploaded: "Jun 25", project: "E-Commerce Platform", type: "pdf" },
-  { name: "wireframes-v2.fig", size: "8.1 MB", uploaded: "Jun 24", project: "Mobile App v3.0", type: "file" },
-  { name: "api-docs.md", size: "156 KB", uploaded: "Jun 23", project: "Data Pipeline", type: "doc" },
-  { name: "screenshot-home.png", size: "1.8 MB", uploaded: "Jun 22", project: "E-Commerce Platform", type: "image" },
-];
+const files = [];
 
 const typeIcons: Record<string, any> = { pdf: FileText, doc: FileText, image: Image, file: File };
 

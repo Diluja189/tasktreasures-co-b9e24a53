@@ -18,18 +18,8 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const trackingItems = [
-  { id: "T1", name: "OAuth Integration", project: "Security Infrastructure", status: "In Progress", progress: 65, deadline: "Apr 20", assignee: "Sarah Chen", priority: "High" },
-  { id: "T2", name: "S3 Bucket Setup", project: "Cloud Migration", status: "Completed", progress: 100, deadline: "Apr 15", assignee: "David Kim", priority: "Medium" },
-  { id: "T3", name: "UI Polish", project: "SaaS Dashboard", status: "Delayed", progress: 30, deadline: "Apr 12", assignee: "Mike Chen", priority: "High" },
-  { id: "T4", name: "DB Indexing", project: "Cloud Migration", status: "In Progress", progress: 85, deadline: "Apr 22", assignee: "Sarah Chen", priority: "Medium" },
-  { id: "T5", name: "Docs Audit", project: "Legacy Cleanup", status: "Not Started", progress: 0, deadline: "May 05", assignee: "Anna Bell", priority: "Low" },
-];
-
-const projectHighlights = [
-  { name: "Cloud Migration", total: 12, completed: 8, delayed: 0, health: 92 },
-  { name: "SaaS Dashboard", total: 8, completed: 3, delayed: 2, health: 68 },
-];
+const trackingItems = [];
+const projectHighlights = [];
 
 const statusStyles = {
   "Completed": "bg-emerald-500/10 text-emerald-600 border-none",
@@ -194,9 +184,6 @@ export default function ProgressTrackingPage() {
                </SelectTrigger>
                <SelectContent className="rounded-2xl border-none shadow-xl">
                   <SelectItem value="All">All Projects</SelectItem>
-                  <SelectItem value="Security Infrastructure">Security Infrastructure</SelectItem>
-                  <SelectItem value="Cloud Migration">Cloud Migration</SelectItem>
-                  <SelectItem value="SaaS Dashboard">SaaS Dashboard</SelectItem>
                </SelectContent>
             </Select>
             <Button className="h-11 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold gap-2 px-6 flex-1 lg:flex-none shadow-sm text-xs">

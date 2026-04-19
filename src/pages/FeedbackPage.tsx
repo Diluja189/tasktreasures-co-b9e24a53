@@ -1,11 +1,7 @@
 import { PageHeader } from "@/components/shared/PageHeader";
 import { MessageSquare, CheckCircle, AlertCircle } from "lucide-react";
 
-const feedback = [
-  { task: "Auth Module Implementation", manager: "Sarah Chen", date: "Jun 25", status: "Approved", comment: "Great work on the JWT implementation. Clean code and well-tested. Moving to production next week." },
-  { task: "Payment Integration", manager: "Sarah Chen", date: "Jun 23", status: "Rework", comment: "The Stripe webhook handler needs error retry logic. Please add exponential backoff and update the tests." },
-  { task: "API Documentation", manager: "David Kim", date: "Jun 20", status: "Approved", comment: "Comprehensive documentation. Consider adding rate limit examples in the next update." },
-];
+const feedback = [];
 
 const statusColors: Record<string, string> = { Approved: "bg-success/10 text-success", Rework: "bg-warning/10 text-warning" };
 const statusIcons: Record<string, any> = { Approved: CheckCircle, Rework: AlertCircle };

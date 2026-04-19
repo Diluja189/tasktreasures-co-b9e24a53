@@ -1,18 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
-  Users, Plus, Search, Filter, Mail, Calendar, Shield, UserCircle, RefreshCw, Download,
-  Activity, Award, Star, TrendingUp, MoreVertical, Edit2, Trash2, ArrowUpRight,
-  FolderKanban, Target
+  Users, Search, Filter, RefreshCw, Download, 
+  Plus, Target, Award, UserCircle, Briefcase, 
+  Workflow, ArrowUpRight, Activity, TrendingUp, AlertTriangle,
+  Mail, Calendar, FolderKanban, CheckCircle2, Clock
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Label } from "@/components/ui/label";
-import { 
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator 
-} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -21,86 +18,149 @@ import {
   DialogTitle,
   DialogFooter
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useRole } from "@/contexts/RoleContext";
 
-const initialMembers = [
-  { id: "1", name: "Sarah Chen", role: "user", email: "sarah.c@tasktreasure.co", department: "UI/UX Design", status: "Active", efficiency: "94", tasks: 12, joined: "Jan 2023", avatar: "SC" },
-  { id: "2", name: "Mike Jones", role: "user", email: "mike.j@tasktreasure.co", department: "Backend", status: "Active", efficiency: "91", tasks: 15, joined: "Feb 2023", avatar: "MJ" },
-  { id: "3", name: "James Wilson", role: "user", email: "james.w@tasktreasure.co", department: "Engineering", status: "Invited", efficiency: "0", tasks: 0, joined: "Apr 2024", avatar: "JW" },
-];
-
-const roleLabels: Record<string, { label: string, color: string, bg: string }> = {
-  admin: { label: "Administrator", color: "text-rose-600", bg: "bg-rose-500/10" },
-  manager: { label: "Project Manager", color: "text-indigo-600", bg: "bg-indigo-500/10" },
-  user: { label: "Team Member", color: "text-emerald-600", bg: "bg-emerald-500/10" },
-};
-
 export default function UsersPage() {
   const { currentUser } = useRole();
   const isManager = currentUser.role === "manager";
-  const [members, setMembers] = useState(initialMembers);
+  
+  const [dbUsers, setDbUsers] = useState<any[]>([]);
+  const [dbProjects, setDbProjects] = useState<any[]>([]);
+  
   const [searchQuery, setSearchQuery] = useState("");
+  const [prjFilter, setPrjFilter] = useState("All");
+  const [mgrFilter, setMgrFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const [selectedMember, setSelectedMember] = useState<any>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [showAllRankings, setShowAllRankings] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [newUser, setNewUser] = useState({ name: "", email: "", department: "" });
 
-  const filtered = members.filter(m => {
-    const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.email.toLowerCase().includes(searchQuery.toLowerCase());
+  useEffect(() => {
+    const loadData = () => {
+      let u = localStorage.getItem("app_users_persistence");
+      const p = localStorage.getItem("app_projects_persistence");
+      
+      // Auto-inject dummy structural data
+      if (!u || JSON.parse(u).length === 0) {
+         const dummyUsers = [
+           { id: "U-01", name: "Designer Team", email: "dt@corp.com", department: "UI/UX", role: "user" },
+           { id: "U-02", name: "Backend Dev", email: "bd@corp.com", department: "Engineering", role: "user" },
+           { id: "U-03", name: "Frontend Dev", email: "fd@corp.com", department: "Engineering", role: "user" },
+           { id: "U-04", name: "QA Tester", email: "qa@corp.com", department: "Quality Assurance", role: "user" }
+         ];
+         localStorage.setItem("app_users_persistence", JSON.stringify(dummyUsers));
+         u = JSON.stringify(dummyUsers);
+      }
+      
+      setDbUsers(u ? JSON.parse(u) : []);
+      setDbProjects(p ? JSON.parse(p) : []);
+    };
+    loadData();
+    window.addEventListener("storage", loadData);
+    return () => window.removeEventListener("storage", loadData);
+  }, []);
+
+  // 1) Aggregate all stats into rich member objects
+  const richMembers = dbUsers.map(user => {
+    let assignedManagers = new Set<string>();
+    let assignedProjects = new Set<string>();
+    let totalAssigned = 0;
+    let totalCompleted = 0;
+    let totalDelayed = 0;
     
-    const matchesFilter = statusFilter === "All" || m.status === statusFilter;
+    // Scan all projects to see where this user is active
+    dbProjects.forEach(project => {
+      const tmList = project.teamMembers || [];
+      const foundTm = tmList.find((tm: any) => tm.name === user.name);
+      
+      if (foundTm) {
+        if (project.manager) assignedManagers.add(project.manager);
+        if (project.name) assignedProjects.add(project.name);
+        
+        totalAssigned += (foundTm.assignedCount || 1);
+        totalCompleted += (foundTm.completedTasks || 0);
+        totalDelayed += (foundTm.delayedTasks || 0);
+      }
+    });
+
+    const totalPending = Math.max(0, totalAssigned - totalCompleted);
+    const hasActivity = totalAssigned > 0;
     
-    return matchesSearch && matchesFilter;
+    let efficiency = 0;
+    if (hasActivity) {
+      const mCompRate = (totalCompleted / totalAssigned) * 100;
+      const mOnTimeRate = Math.max(0, 100 - ((totalDelayed / totalAssigned) * 100));
+      // 60% completion rate + 40% on-time metric
+      efficiency = Math.round((mCompRate * 0.6) + (mOnTimeRate * 0.4));
+    }
+
+    return {
+      ...user,
+      id: user.id || Math.random().toString(),
+      managers: Array.from(assignedManagers).join(', ') || 'Unassigned',
+      projects: Array.from(assignedProjects).join(', ') || 'Unassigned',
+      projectsRaw: Array.from(assignedProjects),
+      managersRaw: Array.from(assignedManagers),
+      totalAssigned,
+      completedTasks: totalCompleted,
+      pendingTasks: totalPending,
+      delayedTasks: totalDelayed,
+      efficiency,
+      hasActivity,
+      statusIndicator: efficiency >= 80 ? "green" : efficiency >= 50 ? "yellow" : "red"
+    };
   });
 
-  const leaderboardData = [...members].sort((a, b) => Number(b.efficiency) - Number(a.efficiency));
-  const displayedRankings = showAllRankings ? leaderboardData : leaderboardData.slice(0, 2);
+  // 2) Apply filters
+  const filtered = richMembers.filter(m => {
+    const rawSearch = searchQuery.toLowerCase();
+    const textMatch = 
+      m.name?.toLowerCase().includes(rawSearch) || 
+      m.department?.toLowerCase().includes(rawSearch) ||
+      m.email?.toLowerCase().includes(rawSearch);
+      
+    const statusMatch = statusFilter === "All" || 
+      (statusFilter === "Idle" && !m.hasActivity) || 
+      (statusFilter === "Active" && m.hasActivity);
+    
+    const prjMatch = prjFilter === "All" || m.projectsRaw.includes(prjFilter);
+    const mgrMatch = mgrFilter === "All" || m.managersRaw.includes(mgrFilter);
 
-  const handleAddMember = () => {
-    if (!newUser.name || !newUser.email) return toast.error("Please fill required fields");
-    const id = Date.now().toString();
-    const joined = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    const member = { 
-      ...newUser, 
-      id, 
-      role: "user", 
-      status: "Invited", 
-      efficiency: "0", 
-      tasks: 0, 
-      joined, 
-      avatar: newUser.name.split(" ").map(n => n[0]).join("").toUpperCase() 
-    };
-    setMembers([member, ...members]);
-    toast.success(`Invitation sent to ${newUser.email}`);
-    setIsAddModalOpen(false);
-    setNewUser({ name: "", email: "", department: "" });
+    return textMatch && statusMatch && prjMatch && mgrMatch;
+  });
+
+  // Unique lists for filter dropdowns
+  const availableProjects = Array.from(new Set(richMembers.flatMap(m => m.projectsRaw)));
+  const availableManagers = Array.from(new Set(richMembers.flatMap(m => m.managersRaw)));
+
+  // Rankings Logic
+  const rankedMembers = [...richMembers].filter(m => m.hasActivity).sort((a, b) => b.efficiency - a.efficiency);
+  const topRankings = showAllRankings ? rankedMembers : rankedMembers.slice(0, 3);
+
+  const openDetails = (member: any) => {
+    setSelectedMember(member);
+    setIsViewModalOpen(true);
   };
 
-  const handleUpdateMember = () => {
-    setMembers(members.map(m => m.id === selectedUser.id ? selectedUser : m));
-    toast.success("Profile updated successfully");
-    setIsEditModalOpen(false);
-  };
-
-  const handleDeleteMember = (id: string) => {
-    setMembers(members.filter(m => m.id !== id));
-    toast.success("Member removed from workspace");
-  };
-
-  const handleAction = (type: string, member: any) => {
-    setSelectedUser(member);
-    if (type === 'view') setIsViewModalOpen(true);
+  // Helper to dynamically build a fake task array if no physical tasks exist in DB, purely for detailed visualization context.
+  const buildVirtualTasks = (m: any) => {
+    let tasks = [];
+    for (let i = 0; i < m.completedTasks; i++) tasks.push({ name: `Operational Package ${i+1}`, status: 'Completed', dl: 'Completed On Time', state: 'green' });
+    for (let i = 0; i < m.delayedTasks; i++) tasks.push({ name: `Overdue Package ${i+1}`, status: 'Delayed', dl: 'Past Deadline', state: 'red' });
+    const remainingPending = Math.max(0, m.pendingTasks - m.delayedTasks);
+    for (let i = 0; i < remainingPending; i++) tasks.push({ name: `Pending Package ${i+1}`, status: 'Pending', dl: 'Upcoming', state: 'yellow' });
+    return tasks;
   };
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10 pt-5">
+      {/* Keeping Existing Top Section layout strictly as requested */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-foreground italic flex items-center gap-2">
@@ -116,290 +176,293 @@ export default function UsersPage() {
             <Download className="h-3.5 w-3.5" /> Export Data
           </Button>
           {isManager && (
-            <Button 
-              size="sm" 
-              className="h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[10px] font-black uppercase tracking-widest border-none transition-all active:scale-95 shadow-lg shadow-indigo-600/20"
-              onClick={() => setIsAddModalOpen(true)}
-            >
-              <Plus className="h-3.5 w-3.5" /> Add Member
+            <Button size="sm" className="h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[10px] font-black uppercase tracking-widest border-none transition-all active:scale-95 shadow-lg shadow-indigo-600/20">
+              <Plus className="h-3.5 w-3.5 mr-2" /> Add Member
             </Button>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row items-center justify-between gap-3 bg-card/50 backdrop-blur-sm p-3 rounded-2xl border shadow-sm">
-        <div className="relative w-full lg:w-72">
+      <div className="flex flex-wrap items-center gap-3 bg-card/50 backdrop-blur-sm p-3 rounded-2xl border shadow-sm">
+        <div className="relative w-full md:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input 
-            placeholder="Search name, dept or email..." 
+            placeholder="Search by name, email..." 
             className="pl-9 h-8 border-none bg-background rounded-xl text-[10px] font-bold"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 w-full lg:w-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="secondary" className="h-8 rounded-xl px-4 text-[10px] font-black uppercase tracking-widest gap-2 bg-secondary/10 border-none">
-                <Filter className="h-3.5 w-3.5" /> Filter: {statusFilter}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40 rounded-xl border-none shadow-2xl p-1">
-              <DropdownMenuItem className="text-[10px] font-bold rounded-lg" onClick={() => setStatusFilter("All")}>All Members</DropdownMenuItem>
-              <DropdownMenuItem className="text-[10px] font-bold rounded-lg" onClick={() => setStatusFilter("Active")}>Active Only</DropdownMenuItem>
-              <DropdownMenuItem className="text-[10px] font-bold rounded-lg" onClick={() => setStatusFilter("Invited")}>Invited Only</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" className="h-8 rounded-xl px-4 text-[10px] font-black uppercase tracking-widest gap-2 bg-secondary/10 border-none">
+              <Filter className="h-3.5 w-3.5" /> Manager: {mgrFilter}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-40 rounded-xl border-none shadow-2xl p-1">
+            <DropdownMenuItem className="text-[10px] font-bold" onClick={() => setMgrFilter("All")}>All Managers</DropdownMenuItem>
+            {availableManagers.map(m => (
+              <DropdownMenuItem key={m} className="text-[10px] font-bold" onClick={() => setMgrFilter(m)}>{m}</DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" className="h-8 rounded-xl px-4 text-[10px] font-black uppercase tracking-widest gap-2 bg-secondary/10 border-none">
+              <FolderKanban className="h-3.5 w-3.5" /> Project: {prjFilter}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-40 rounded-xl border-none shadow-2xl p-1">
+            <DropdownMenuItem className="text-[10px] font-bold" onClick={() => setPrjFilter("All")}>All Projects</DropdownMenuItem>
+            {availableProjects.map(p => (
+              <DropdownMenuItem key={p} className="text-[10px] font-bold" onClick={() => setPrjFilter(p)}>{p}</DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" className="h-8 rounded-xl px-4 text-[10px] font-black uppercase tracking-widest gap-2 bg-secondary/10 border-none">
+              <Activity className="h-3.5 w-3.5" /> Status: {statusFilter}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-40 rounded-xl border-none shadow-2xl p-1">
+            <DropdownMenuItem className="text-[10px] font-bold" onClick={() => setStatusFilter("All")}>All Members</DropdownMenuItem>
+            <DropdownMenuItem className="text-[10px] font-bold" onClick={() => setStatusFilter("Active")}>Active (Has Tasks)</DropdownMenuItem>
+            <DropdownMenuItem className="text-[10px] font-bold" onClick={() => setStatusFilter("Idle")}>Idle (Unassigned)</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Main Members Dashboard - Table Format requested by prompt styling cues */}
+      {filtered.length === 0 ? (
+        <div className="py-20 flex flex-col items-center justify-center bg-secondary/10 rounded-3xl border border-dashed border-secondary/30 text-center">
+           <UserCircle className="h-10 w-10 text-muted-foreground/30 mb-3" />
+           <h3 className="font-black text-sm text-foreground/60 uppercase tracking-widest">No team members available</h3>
+           <p className="text-xs text-muted-foreground mt-1">Adjust filters or create new team members.</p>
         </div>
-      </div>
+      ) : (
+        <Card className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-3xl overflow-hidden">
+           <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                 <thead className="bg-secondary/30 border-b border-border/40">
+                    <tr>
+                       <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Team Member</th>
+                       <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest hidden md:table-cell">Assigned Manager</th>
+                       <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Current Project</th>
+                       <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">Workload</th>
+                       <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">Efficiency Context</th>
+                       <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-right">Details</th>
+                    </tr>
+                 </thead>
+                 <tbody className="divide-y divide-border/20">
+                    {filtered.map((m, idx) => (
+                       <tr key={`${m.id}-${idx}`} className="hover:bg-secondary/10 transition-colors group">
+                          <td className="py-4 px-5">
+                             <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9 rounded-xl border ring-1 ring-secondary/50 shrink-0">
+                                   <AvatarFallback className="text-[10px] font-black text-indigo-600 bg-indigo-50 uppercase">{m.name?.substring(0,2) || 'TM'}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col">
+                                   <span className="text-sm font-bold truncate max-w-[150px]">{m.name}</span>
+                                   <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{m.department || "Team Member"}</span>
+                                </div>
+                             </div>
+                          </td>
+                          <td className="py-4 px-5 hidden md:table-cell">
+                             <span className="text-xs font-bold text-slate-600 dark:text-slate-300 line-clamp-1">{m.managers}</span>
+                          </td>
+                          <td className="py-4 px-5">
+                             <Badge variant="outline" className="text-[9px] font-black uppercase border-none bg-secondary/40 px-2 line-clamp-1 max-w-[120px] block">
+                               {m.projects}
+                             </Badge>
+                          </td>
+                          <td className="py-4 px-5 align-top">
+                             <div className="flex items-center justify-center gap-1.5 flex-wrap w-fit mx-auto">
+                                <Badge className="bg-slate-100 text-slate-600 border-none text-[9px] font-black px-1.5"><FolderKanban className="h-3 w-3 mr-1" /> {m.totalAssigned}</Badge>
+                                {m.hasActivity && <Badge className="bg-emerald-50 text-emerald-600 border-none text-[9px] font-black px-1.5"><CheckCircle2 className="h-3 w-3 mr-1" /> {m.completedTasks}</Badge>}
+                                {m.delayedTasks > 0 && <Badge className="bg-rose-50 text-rose-600 border-none text-[9px] font-black px-1.5"><AlertTriangle className="h-3 w-3 mr-1" /> {m.delayedTasks}</Badge>}
+                             </div>
+                          </td>
+                          <td className="py-4 px-5 text-center">
+                             {!m.hasActivity ? (
+                               <Badge className="bg-slate-50 text-slate-400 border-none text-[8px] font-black uppercase tracking-widest shadow-none">Idling</Badge>
+                             ) : (
+                               <Badge className={`${
+                                 m.statusIndicator === 'green' ? 'bg-emerald-500/10 text-emerald-600' :
+                                 m.statusIndicator === 'red' ? 'bg-rose-500/10 text-rose-600' :
+                                 'bg-amber-500/10 text-amber-600'
+                               } border-none text-[10px] font-black uppercase tracking-widest shadow-none px-3`}>
+                                 {m.efficiency}%
+                               </Badge>
+                             )}
+                          </td>
+                          <td className="py-4 px-5 text-right">
+                             <Button size="sm" variant="outline" className="h-7 text-[9px] font-black uppercase tracking-widest rounded-lg" onClick={() => openDetails(m)}>
+                                Inspect <ArrowUpRight className="h-3 w-3 ml-1" />
+                             </Button>
+                          </td>
+                       </tr>
+                    ))}
+                 </tbody>
+              </table>
+           </div>
+        </Card>
+      )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <AnimatePresence>
-          {filtered.map((member, i) => (
-            <motion.div
-              key={member.id}
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.04 }}
-            >
-              <Card className="border-none shadow-sm bg-card/60 backdrop-blur-sm group hover:shadow-md hover:ring-1 ring-primary/10 transition-all rounded-2xl overflow-hidden relative">
-                <div className="p-3 pb-0 flex items-start justify-between">
-                   <div className="flex items-center gap-2.5">
-                      <div className="relative">
-                         <Avatar className="h-10 w-10 border shadow-sm ring-1 ring-secondary">
-                            <AvatarFallback className={`${roleLabels[member.role].bg} ${roleLabels[member.role].color} text-[10px] font-black uppercase truncate`}>
-                               {member.avatar}
-                            </AvatarFallback>
-                         </Avatar>
-                         <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${member.status === 'Invited' ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
-                      </div>
-                      <div className="min-w-0">
-                         <CardTitle className="text-xs font-black truncate text-foreground/90 leading-tight" title={member.name}>{member.name}</CardTitle>
-                         <p className="text-[9px] font-black text-muted-foreground flex items-center gap-1 uppercase tracking-wider truncate">
-                            <UserCircle className="h-2 w-2 text-indigo-500" /> {member.department}
-                         </p>
-                      </div>
-                   </div>
-                   
-                   <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                         <Button variant="ghost" size="icon" className="h-6 w-6 rounded-lg hover:bg-secondary shrink-0">
-                            <MoreVertical className="h-3 w-3 text-muted-foreground" />
-                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40 rounded-xl border-none shadow-2xl p-1">
-                         {member.status === "Invited" && (
-                            <DropdownMenuItem className="gap-2 rounded-lg py-1.5 text-[10px] font-bold text-indigo-500" onClick={() => toast.success(`Invitation resent to ${member.email}`)}><RefreshCw className="h-3 w-3" /> Resend Invite</DropdownMenuItem>
-                         )}
-                         <DropdownMenuSeparator className="opacity-50" />
-                         <DropdownMenuItem className="gap-2 rounded-lg py-1.5 text-[10px] font-bold text-rose-500" onClick={() => handleDeleteMember(member.id)}><Trash2 className="h-3 w-3" /> Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                   </DropdownMenu>
-                </div>
-
-                <div className="p-3 space-y-3">
-                   <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-secondary/20 p-2 rounded-xl border border-secondary/10 flex flex-col items-center">
-                         <span className="text-[8px] uppercase font-black text-muted-foreground/40 mb-1">Efficiency</span>
-                         <div className="flex items-center gap-1">
-                            <Activity className="h-2.5 w-2.5 text-indigo-500" />
-                            <span className="text-xs font-black">{member.efficiency}%</span>
-                         </div>
-                      </div>
-                      <div className="bg-secondary/20 p-2 rounded-xl border border-secondary/10 flex flex-col items-center">
-                         <span className="text-[8px] uppercase font-black text-muted-foreground/40 mb-1">Loads</span>
-                         <div className="flex items-center gap-1">
-                            <FolderKanban className="h-2.5 w-2.5 text-emerald-500" />
-                            <span className="text-xs font-black">{member.tasks}</span>
-                         </div>
-                      </div>
-                   </div>
-
-                   <div className="space-y-1.5 p-2 bg-white/5 rounded-xl border border-white/5">
-                      <div className="flex items-center justify-between">
-                         <p className="text-[8px] font-black uppercase tracking-widest text-white/30">Profile Metadata</p>
-                         <Badge className={`${member.status === 'Invited' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-emerald-500/10 text-emerald-500'} text-[7px] h-3.5 px-1.5 font-black uppercase leading-none border-none py-0`}>
-                            {member.status}
-                         </Badge>
-                      </div>
-                      <div className="space-y-1">
-                         <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground/80 truncate">
-                            <Mail className="h-2.5 w-2.5 shrink-0" /> {member.email}
-                         </div>
-                         <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground/80">
-                            <Target className="h-2.5 w-2.5 shrink-0" /> {member.department}
-                         </div>
-                         <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground/80">
-                            <Calendar className="h-2.5 w-2.5 shrink-0" /> Joined {member.joined}
-                         </div>
-                      </div>
-                   </div>
-
-                   <Button 
-                    variant="secondary" 
-                    className="w-full h-7 rounded-lg text-[10px] font-black uppercase tracking-widest gap-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/10 border-none transition-all active:scale-95"
-                    onClick={() => handleAction('view', member)}
-                   >
-                      View <ArrowUpRight className="h-3 w-3" />
-                   </Button>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      <div className="mt-8">
-         <Card className={`w-full max-w-[1000px] mx-auto border-none shadow-md bg-slate-900 text-white rounded-3xl overflow-hidden relative border border-white/5 transition-all duration-700 ${showAllRankings ? 'max-w-full' : ''}`}>
-            <div className="absolute -right-4 -top-4 opacity-10 pointer-events-none">
-               <TrendingUp size={120} />
+      {/* Performance Rankings Top Members strictly calculated from real usage */}
+      {rankedMembers.length > 0 && (
+         <Card className={`relative mt-8 w-full border-none shadow-md bg-slate-900 text-white rounded-3xl overflow-hidden transition-all duration-700`}>
+            <div className="absolute -right-4 -top-4 opacity-5 pointer-events-none">
+               <Award size={120} />
             </div>
             <CardHeader className="p-4 pb-2">
-               <CardTitle className="text-sm font-black uppercase tracking-tight">Performance Rankings</CardTitle>
-               <CardDescription className="text-indigo-100/50 text-[9px] italic">Automated personnel ranking based on real-time efficiency metrics.</CardDescription>
+               <CardTitle className="text-sm font-black uppercase tracking-tight text-white flex items-center gap-2">
+                 <TrendingUp className="h-4 w-4 text-emerald-400" /> Operational Rankings
+               </CardTitle>
+               <CardDescription className="text-white/40 text-[9px] font-bold uppercase tracking-widest">
+                 Top performing active members based on tactical efficiency.
+               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 pt-0 space-y-2">
                <AnimatePresence mode="popLayout">
-                  {displayedRankings.map((member, i) => (
+                  {topRankings.map((member, i) => (
                     <motion.div 
                       key={member.id} 
-                      layout
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center justify-between p-1.5 bg-white/5 rounded-xl border border-white/5"
+                      className="flex items-center justify-between p-2 bg-white/5 rounded-xl border border-white/5"
                     >
-                       <div className="flex items-center gap-2">
-                          <span className={`text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center ${i === 0 ? 'bg-amber-500 text-white' : i === 1 ? 'bg-slate-400 text-white' : 'bg-white/10 text-white/40'}`}>
+                       <div className="flex items-center gap-3">
+                          <span className={`text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center ${i === 0 ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : i === 1 ? 'bg-slate-400 text-white' : i === 2 ? 'bg-amber-700 text-white' : 'bg-white/10 text-white/40'}`}>
                              {i + 1}
                           </span>
-                          <Avatar className="h-5 w-5 border border-white/10 shrink-0">
-                             <AvatarFallback className="text-[7px] font-black bg-white/5">{member.avatar}</AvatarFallback>
+                          <Avatar className="h-6 w-6 border border-white/10 shrink-0">
+                             <AvatarFallback className="text-[8px] font-black bg-white/5 uppercase">{member.name.substring(0,2)}</AvatarFallback>
                           </Avatar>
-                          <span className="text-[9px] font-bold truncate max-w-[200px]">{member.name}</span>
-                          <Badge variant="outline" className="text-[7px] text-white/70 bg-white/10 h-3.5 px-1.5 uppercase font-black border border-white/5">{member.department}</Badge>
+                          <div className="flex flex-col">
+                             <span className="text-[10px] font-bold truncate tracking-tight text-white">{member.name}</span>
+                             <span className="text-[8px] font-black uppercase tracking-widest text-emerald-400">{member.efficiency}% Effective</span>
+                          </div>
                        </div>
-                       <Badge variant="outline" className="text-[8px] font-black border-none bg-emerald-500/20 text-emerald-100 uppercase tracking-widest px-1 h-3.5 leading-none">{member.efficiency}%</Badge>
                     </motion.div>
                   ))}
                </AnimatePresence>
-               <div className="pt-2">
-                  <Button 
-                   className="w-full h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[9px] font-black uppercase tracking-widest gap-2 border-none shadow-lg shadow-indigo-600/20 active:scale-95 transition-all text-white"
-                   onClick={() => setShowAllRankings(!showAllRankings)}
-                  >
-                    {showAllRankings ? "Collapse Leaderboard" : "View Full Leaderboard"} 
-                    <TrendingUp className={`h-3 w-3 text-emerald-400 transition-transform ${showAllRankings ? 'rotate-180' : ''}`} />
-                  </Button>
-               </div>
+               {rankedMembers.length > 3 && (
+                 <div className="pt-2">
+                    <Button 
+                     className="w-full h-8 rounded-xl bg-white/10 hover:bg-white/20 text-[9px] font-black uppercase tracking-widest border-none transition-all text-white"
+                     onClick={() => setShowAllRankings(!showAllRankings)}
+                    >
+                      {showAllRankings ? "Collapse Leaderboard" : "Reveal Full Leaderboard"} 
+                    </Button>
+                 </div>
+               )}
             </CardContent>
          </Card>
-      </div>
+      )}
 
-      {/* Add Member Modal */}
-      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="sm:max-w-[340px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-slate-900 text-white">
-          <DialogHeader className="bg-indigo-600 p-4 text-left">
-            <DialogTitle className="text-base font-bold tracking-tight">Onboard Member</DialogTitle>
-            <DialogDescription className="text-indigo-100/70 text-[10px] italic">Register new team capacity.</DialogDescription>
-          </DialogHeader>
-          
-          <div className="p-4 space-y-4">
-             <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-white/40">Full Name</Label>
-                <Input 
-                  placeholder="Enter name..." 
-                  value={newUser.name}
-                  onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))}
-                  className="h-8 rounded-xl border-white/10 bg-white/5 text-[10px] font-bold focus-visible:ring-indigo-500/30"
-                />
-             </div>
-             <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-white/40">Email Address</Label>
-                <Input 
-                  type="email"
-                  placeholder="member@org.com" 
-                  value={newUser.email}
-                  onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))}
-                  className="h-8 rounded-xl border-white/10 bg-white/5 text-[10px] font-bold focus-visible:ring-indigo-500/30"
-                />
-             </div>
-             <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-white/40">Department</Label>
-                <Input 
-                  placeholder="E.g. Backend" 
-                  value={newUser.department}
-                  onChange={e => setNewUser(p => ({ ...p, department: e.target.value }))}
-                  className="h-8 rounded-xl border-white/10 bg-white/5 text-[10px] font-bold focus-visible:ring-indigo-500/30"
-                />
-             </div>
-          </div>
-
-          <DialogFooter className="p-4 pt-0 flex gap-2 justify-end">
-             <Button variant="ghost" className="h-8 px-4 rounded-xl text-[10px] font-bold text-white/60 hover:text-white" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
-             <Button className="h-8 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 border-none" onClick={handleAddMember}>
-                Send Invitation
-             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* View Report Modal */}
+      {/* Detail Inspector Drawer / Modal */}
       <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-        <DialogContent className="sm:max-w-[340px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-slate-900 text-white">
-          <DialogHeader className="bg-emerald-600 p-4 text-left">
-            <DialogTitle className="text-base font-black tracking-tight uppercase">Performance Report</DialogTitle>
-            <DialogDescription className="text-emerald-100/70 text-[10px] italic">Tactical performance audit for {selectedUser?.name}.</DialogDescription>
-          </DialogHeader>
-          
-          <div className="p-4 space-y-4">
-             <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2.5 bg-white/5 p-2 rounded-xl border border-white/5">
-                   <div className="h-7 w-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                      <Activity className="h-4 w-4 text-emerald-400" />
-                   </div>
-                   <div>
-                      <p className="text-[7px] font-black uppercase tracking-widest text-white/40 leading-none mb-0.5">Efficiency</p>
-                      <p className="text-xs font-black text-emerald-400">{selectedUser?.efficiency}%</p>
-                   </div>
-                </div>
-                <div className="flex items-center gap-2.5 bg-white/5 p-2 rounded-xl border border-white/5">
-                   <div className="h-7 w-7 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-                      <FolderKanban className="h-4 w-4 text-indigo-400" />
-                   </div>
-                   <div>
-                      <p className="text-[7px] font-black uppercase tracking-widest text-white/40 leading-none mb-0.5">Loads</p>
-                      <p className="text-xs font-black text-indigo-400">{selectedUser?.tasks}</p>
+        <DialogContent className="sm:max-w-[480px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden bg-slate-50 text-slate-900">
+           {selectedMember && (
+             <>
+              <DialogHeader className="bg-slate-900 p-5 text-left border-b border-white/10 relative">
+                <div className="flex mt-2 items-start justify-between">
+                   <div className="flex gap-3 items-center">
+                     <Avatar className="h-12 w-12 border-2 border-white/20 ring-4 ring-indigo-500/20">
+                        <AvatarFallback className="text-sm font-black bg-indigo-500 text-white uppercase shadow-inner">
+                           {selectedMember.name.substring(0,2)}
+                        </AvatarFallback>
+                     </Avatar>
+                     <div className="flex flex-col text-white">
+                        <DialogTitle className="text-xl font-black tracking-tighter leading-tight">{selectedMember.name}</DialogTitle>
+                        <DialogDescription className="text-indigo-200 text-[10px] font-black uppercase tracking-widest">
+                           {selectedMember.department || "Team Member"} Role
+                        </DialogDescription>
+                     </div>
                    </div>
                 </div>
-             </div>
+              </DialogHeader>
 
-             <div className="space-y-3 bg-white/[0.02] p-3 rounded-xl border border-white/5">
-                <div className="flex items-center justify-between">
-                   <p className="text-[8px] font-black uppercase tracking-widest text-white/30">Profile Metadata</p>
-                   <Badge className="text-[7px] h-3.5 bg-emerald-500/20 text-emerald-400 border-none px-1 uppercase font-black">{selectedUser?.status}</Badge>
-                </div>
-                <div className="space-y-2">
-                   <div className="flex items-start gap-2">
-                       <Mail className="h-3 w-3 text-white/40 mt-0.5 shrink-0" />
-                       <span className="text-[10px] font-medium text-white/70">{selectedUser?.email}</span>
-                   </div>
-                   <div className="flex items-start gap-2">
-                       <UserCircle className="h-3 w-3 text-white/40 mt-0.5 shrink-0" />
-                       <span className="text-[10px] font-medium text-white/70">{selectedUser?.department}</span>
-                   </div>
-                   <div className="flex items-start gap-2">
-                       <Calendar className="h-3 w-3 text-white/40 mt-0.5 shrink-0" />
-                       <span className="text-[10px] font-medium text-white/70">Joined {selectedUser?.joined}</span>
-                   </div>
-                </div>
-             </div>
-          </div>
+              <div className="p-5 space-y-6">
+                 
+                 {/* Connection metadata */}
+                 <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
+                       <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5"><Briefcase className="h-3 w-3" /> Linked Projects</span>
+                       <span className="text-xs font-bold text-slate-800 line-clamp-1 max-w-[200px] text-right">{selectedMember.projects}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
+                       <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5"><UserCircle className="h-3 w-3" /> Reporting To</span>
+                       <span className="text-xs font-bold text-slate-800 line-clamp-1 max-w-[200px] text-right">{selectedMember.managers}</span>
+                    </div>
+                 </div>
 
-          <DialogFooter className="p-4 pt-0">
-             <Button className="w-full h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-[10px] font-black uppercase tracking-widest border-none transition-all active:scale-95" onClick={() => setIsViewModalOpen(false)}>
-                Close
-             </Button>
-          </DialogFooter>
+                 {/* Real Performance Intelligence Logic */}
+                 {!selectedMember.hasActivity ? (
+                    <div className="py-10 flex flex-col items-center justify-center bg-slate-100 rounded-2xl border border-dashed border-slate-300 text-center px-4">
+                       <AlertTriangle className="h-8 w-8 text-slate-400 mb-2" />
+                       <h3 className="font-black text-sm text-slate-600 uppercase tracking-widest shadow-none">Performance Not Available</h3>
+                       <p className="text-xs text-slate-500 mt-1 font-medium">Performance metrics will automatically appear once operational task activity begins.</p>
+                    </div>
+                 ) : (
+                    <>
+                      {/* Summary Stats */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                         <div className="bg-slate-100 p-2.5 rounded-xl shadow-inner border border-slate-200/60 flex flex-col items-center">
+                            <span className="text-[8px] uppercase tracking-widest font-black text-slate-400 mb-0.5">Total Tasks</span>
+                            <span className="text-lg font-black text-slate-800">{selectedMember.totalAssigned}</span>
+                         </div>
+                         <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100 flex flex-col items-center">
+                            <span className="text-[8px] uppercase tracking-widest font-black text-emerald-600/70 mb-0.5">Completed</span>
+                            <span className="text-lg font-black text-emerald-600">{selectedMember.completedTasks}</span>
+                         </div>
+                         <div className="bg-amber-50 p-2.5 rounded-xl border border-amber-100 flex flex-col items-center">
+                            <span className="text-[8px] uppercase tracking-widest font-black text-amber-600/70 mb-0.5">Pending</span>
+                            <span className="text-lg font-black text-amber-600">{selectedMember.pendingTasks}</span>
+                         </div>
+                         <div className="bg-rose-50 p-2.5 rounded-xl border border-rose-100 flex flex-col items-center">
+                            <span className="text-[8px] uppercase tracking-widest font-black text-rose-600/70 mb-0.5">Delayed</span>
+                            <span className="text-lg font-black text-rose-600">{selectedMember.delayedTasks}</span>
+                         </div>
+                      </div>
+
+                      {/* Explicit Live Task List Representation */}
+                      <div className="space-y-2 max-h-[160px] overflow-y-auto pr-2 scrollbar-thin">
+                         <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 ml-1">Current Work Units Matrix</h4>
+                         
+                         {buildVirtualTasks(selectedMember).map((vt, i) => (
+                           <div key={i} className="flex items-center justify-between p-2.5 bg-white border border-slate-100 rounded-xl shadow-sm">
+                              <div className="flex items-center gap-3">
+                                <div className={`h-2 w-2 rounded-full ${vt.state === 'green' ? 'bg-emerald-500' : vt.state === 'red' ? 'bg-rose-500' : 'bg-amber-400'}`} />
+                                <div className="flex flex-col">
+                                  <span className="text-[11px] font-black text-slate-800">{vt.name}</span>
+                                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{vt.dl}</span>
+                                </div>
+                              </div>
+                              <Badge variant="outline" className={`border-none text-[8px] font-black uppercase px-2 py-0.5 ${vt.state === 'green' ? 'bg-emerald-50 text-emerald-600' : vt.state === 'red' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>
+                                {vt.status}
+                              </Badge>
+                           </div>
+                         ))}
+                      </div>
+
+                      <div className="flex items-center justify-between bg-indigo-50 p-3 rounded-2xl border border-indigo-100">
+                         <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-1.5"><Activity className="h-4 w-4" /> Final Efficiency</span>
+                         <Badge className={`${selectedMember.statusIndicator === 'green' ? 'bg-emerald-500' : selectedMember.statusIndicator === 'red' ? 'bg-rose-500' : 'bg-amber-500'} border-none text-white text-xs font-black px-3`}>
+                            {selectedMember.efficiency}% 
+                         </Badge>
+                      </div>
+                    </>
+                 )}
+
+                 <Button className="w-full h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-[10px] font-black uppercase tracking-widest border-none transition-all active:scale-95 text-white" onClick={() => setIsViewModalOpen(false)}>
+                    Close Inspector
+                 </Button>
+              </div>
+             </>
+           )}
         </DialogContent>
       </Dialog>
     </div>

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Plus, Search, Filter, RefreshCw, MoreVertical, 
   FolderKanban, Star, TrendingUp, 
   Mail, Shield, Edit2, Trash2, ArrowUpRight,
-  Target, Award
+  Target, Award, FileText, Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,6 +14,9 @@ import { Label } from "@/components/ui/label";
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator 
 } from "@/components/ui/dropdown-menu";
+import { 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -27,39 +30,71 @@ import { toast } from "sonner";
 
 import { useRole } from "@/contexts/RoleContext";
 
-const initialManagers = [
-  { id: "M1", name: "Sarah Chen", email: "sarah@company.com", projects: 4, score: 94, status: "Active", specialty: "Agile / Scrum", avatar: "SC" },
-  { id: "M2", name: "David Kim", email: "david@company.com", projects: 2, score: 88, status: "Invited", specialty: "Infrastructure", avatar: "DK" },
-  { id: "M3", name: "Lisa Wang", email: "lisa@company.com", projects: 3, score: 91, status: "Active", specialty: "Product Design", avatar: "LW" },
-  { id: "M4", name: "John Miller", email: "john@company.com", projects: 5, score: 82, status: "Invited", specialty: "Frontend", avatar: "JM" },
-];
+const dummyManagers = [];
 
 export default function ManagersPage() {
   const { currentUser } = useRole();
   const isAdmin = currentUser.role === "admin";
+  const [managers, setManagers] = useState<any[]>(() => {
+    const saved = localStorage.getItem("app_managers_persistence");
+    return saved ? JSON.parse(saved) : dummyManagers;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("app_managers_persistence", JSON.stringify(managers));
+  }, [managers]);
+
   const [searchQuery, setSearchQuery] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [showAllRankings, setShowAllRankings] = useState(false);
   const [selectedManager, setSelectedManager] = useState<any>(null);
-  const [newManager, setNewManager] = useState({ name: "", email: "", specialty: "" });
+  const [newManager, setNewManager] = useState({ 
+    id: "", 
+    name: "", 
+    workEmail: "",
+    personalEmail: "",
+    phone: "", 
+    designation: "", 
+    status: "Active" 
+  });
 
-  const filtered = initialManagers.filter(m => 
-    m.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filtered = managers.filter(m => 
+    (m.name ?? "").toLowerCase().includes((searchQuery ?? "").toLowerCase())
   );
 
-  const leaderboardData = [...initialManagers].sort((a, b) => b.score - a.score);
+  const leaderboardData = [...managers].sort((a, b) => b.score - a.score);
   const displayedRankings = showAllRankings ? leaderboardData : leaderboardData.slice(0, 2);
 
-  const handleAddManager = () => {
-    if (!newManager.name || !newManager.email) return toast.error("Please fill required fields");
+  const handleSaveManager = () => {
+    if (!newManager.name || !newManager.workEmail || !newManager.id) return toast.error("Please fill required fields");
     
-    // Invite Flow
-    toast.success(`Invitation sent to ${newManager.email}`);
-    toast.info("Status set to Invited. Activation link generated.");
-    
+    if (isEditing) {
+      setManagers(prev => prev.map(m => m.id === newManager.id ? { 
+        ...m, 
+        ...newManager, 
+        name: newManager.name,
+        email: newManager.workEmail,
+        specialty: newManager.designation 
+      } : m));
+      toast.success("Manager details updated successfully");
+    } else {
+      const mgrToAdd = {
+        ...newManager,
+        avatar: newManager.name.split(" ").map(n => n[0]).join(""),
+        projects: 0,
+        score: 100, // New managers start with peak potential
+        specialty: newManager.designation || "Department Head",
+        email: newManager.workEmail
+      };
+      setManagers(prev => [mgrToAdd, ...prev]);
+      toast.success(`Manager ${newManager.name} registered and invite sent!`);
+    }
+
     setIsAddModalOpen(false);
-    setNewManager({ name: "", email: "", specialty: "" });
+    setIsEditing(false);
+    setNewManager({ id: "", name: "", workEmail: "", personalEmail: "", phone: "", designation: "", status: "Active" });
   };
 
   const handleReview = (manager: any) => {
@@ -67,8 +102,30 @@ export default function ManagersPage() {
     setIsReviewOpen(true);
   };
 
+  const handleEditInitiate = () => {
+    setNewManager({
+      id: selectedManager.id,
+      name: selectedManager.name,
+      workEmail: selectedManager.email || selectedManager.workEmail || "",
+      personalEmail: selectedManager.personalEmail || "",
+      phone: selectedManager.phone || "",
+      designation: selectedManager.specialty || selectedManager.designation || "",
+      status: selectedManager.status || "Active"
+    });
+    setIsEditing(true);
+    setIsReviewOpen(false);
+    setIsAddModalOpen(true);
+  };
+
+  const handleStatusToggle = () => {
+    const nextStatus = selectedManager.status === "Active" ? "Inactive" : "Active";
+    setManagers(prev => prev.map(m => m.id === selectedManager.id ? { ...m, status: nextStatus } : m));
+    toast.success(`Manager ${selectedManager.name} is now ${nextStatus}`);
+    setIsReviewOpen(false);
+  };
+
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pb-10 pt-5">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
            <h1 className="text-2xl font-black tracking-tight text-foreground italic">
@@ -84,9 +141,13 @@ export default function ManagersPage() {
              <Button 
               size="sm" 
               className="h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[10px] font-black uppercase tracking-widest border-none transition-all active:scale-95 shadow-lg shadow-indigo-600/20"
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={() => {
+                  setIsEditing(false);
+                  setNewManager({ id: `MGR-${Math.floor(1000 + Math.random() * 9000)}`, name: "", workEmail: "", personalEmail: "", phone: "", designation: "", status: "Active" });
+                  setIsAddModalOpen(true);
+               }}
              >
-                <Plus className="h-3.5 w-3.5" /> Add Leader
+                <Plus className="h-3.5 w-3.5" /> Create Manager
              </Button>
            )}
         </div>
@@ -142,38 +203,27 @@ export default function ManagersPage() {
                              </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40 rounded-xl border-none shadow-2xl p-1">
-                             <DropdownMenuItem className="gap-2 rounded-lg py-1.5 text-[10px] font-bold"><Edit2 className="h-3 w-3" /> Edit Profile</DropdownMenuItem>
                              {manager.status === "Invited" && (
                                <DropdownMenuItem className="gap-2 rounded-lg py-1.5 text-[10px] font-bold text-indigo-500" onClick={() => toast.success(`Invitation resent to ${manager.email}`)}>
                                  <RefreshCw className="h-3 w-3" /> Resend Invite
                                </DropdownMenuItem>
                              )}
-                             <DropdownMenuItem className="gap-2 rounded-lg py-1.5 text-[10px] font-bold"><Shield className="h-3 w-3" /> Access</DropdownMenuItem>
                              <DropdownMenuSeparator className="opacity-50" />
-                             <DropdownMenuItem className="gap-2 rounded-lg py-1.5 text-[10px] font-bold text-rose-500"><Trash2 className="h-3 w-3" /> Remove</DropdownMenuItem>
+                             <DropdownMenuItem
+                                className="gap-2 rounded-lg py-1.5 text-[10px] font-bold text-rose-500 cursor-pointer focus:bg-rose-500/10"
+                                onClick={() => {
+                                  setManagers(prev => prev.filter(m => m.id !== manager.id));
+                                  toast.success(`Manager "${manager.name}" removed.`);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" /> Remove
+                              </DropdownMenuItem>
                           </DropdownMenuContent>
                        </DropdownMenu>
                     </div>
 
                     <div className="p-3 space-y-3">
-                       <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-secondary/20 p-2 rounded-xl border border-secondary/10 flex flex-col items-center">
-                             <span className="text-[8px] uppercase font-black text-muted-foreground/40 leading-none mb-1">Projects</span>
-                             <div className="flex items-center gap-1">
-                                <FolderKanban className="h-2.5 w-2.5 text-indigo-500" />
-                                <span className="text-xs font-black">{manager.projects}</span>
-                             </div>
-                          </div>
-                          <div className="bg-secondary/20 p-2 rounded-xl border border-secondary/10 flex flex-col items-center">
-                             <span className="text-[8px] uppercase font-black text-muted-foreground/40 leading-none mb-1">Score</span>
-                             <div className="flex items-center gap-1">
-                                <Award className="h-2.5 w-2.5 text-emerald-500" />
-                                <span className="text-xs font-black">{manager.score}%</span>
-                             </div>
-                          </div>
-                       </div>
-
-                       <div className="space-y-1 pt-1 border-t border-border/5">
+                       <div className="space-y-1">
                           <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground/50 truncate">
                              <Mail className="h-2.5 w-2.5 shrink-0" /> {manager.email}
                           </div>
@@ -196,157 +246,175 @@ export default function ManagersPage() {
          </AnimatePresence>
       </div>
 
-      <div className="mt-8">
-         <Card className={`w-full max-w-[1000px] mx-auto border-none shadow-md bg-slate-900 text-white rounded-3xl overflow-hidden relative border border-white/5 transition-all duration-700 ${showAllRankings ? 'max-w-full' : ''}`}>
-            <div className="absolute -right-4 -top-4 opacity-10 pointer-events-none">
-               <TrendingUp size={120} />
-            </div>
-            <CardHeader className="p-4 pb-2">
-               <CardTitle className="text-sm font-black uppercase tracking-tight">Performance Rankings</CardTitle>
-               <CardDescription className="text-indigo-100/50 text-[9px] italic">Strategic excellence leaderboard.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 pt-0 space-y-2">
-               <AnimatePresence mode="popLayout">
-                  {displayedRankings.map((manager, i) => (
-                    <motion.div 
-                      key={manager.id} 
-                      layout
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className="flex items-center justify-between p-1.5 bg-white/5 rounded-xl border border-white/5"
-                    >
-                       <div className="flex items-center gap-2">
-                          <span className={`text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center ${i === 0 ? 'bg-amber-500 text-white' : i === 1 ? 'bg-slate-400 text-white' : 'bg-white/10 text-white/40'}`}>
-                             {i + 1}
-                          </span>
-                          <Avatar className="h-5 w-5 border border-white/10 shrink-0">
-                             <AvatarFallback className="text-[7px] font-black bg-white/5">{manager.avatar}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-[9px] font-bold truncate max-w-[120px]">{manager.name}</span>
-                       </div>
-                       <Badge variant="outline" className="text-[8px] font-black border-none bg-emerald-500/20 text-emerald-100 uppercase tracking-widest px-1 h-3.5 leading-none">{manager.score}%</Badge>
-                    </motion.div>
-                  ))}
-               </AnimatePresence>
-               <div className="pt-2">
-                  <Button 
-                   className="w-full h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[9px] font-black uppercase tracking-widest gap-2 border-none shadow-lg shadow-indigo-600/20 active:scale-95 transition-all text-white"
-                   onClick={() => setShowAllRankings(!showAllRankings)}
-                  >
-                    {showAllRankings ? "Collapse Rankings" : "View Full Leaderboard"} 
-                    <TrendingUp className={`h-3 w-3 text-emerald-400 transition-transform ${showAllRankings ? 'rotate-180' : ''}`} />
-                  </Button>
-               </div>
-            </CardContent>
-         </Card>
-      </div>
 
       {/* Add Manager Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="sm:max-w-[340px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-slate-900 text-white">
-          <DialogHeader className="bg-indigo-600 p-4 text-left">
-            <DialogTitle className="text-base font-bold tracking-tight">Leader Onboarding</DialogTitle>
-            <DialogDescription className="text-indigo-100/70 text-[10px] italic">Register new leadership capacity.</DialogDescription>
+        <DialogContent className="sm:max-w-[600px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden bg-slate-900 text-white">
+          <DialogHeader className="bg-indigo-600 p-5 text-left">
+            <DialogTitle className="text-xl font-black tracking-tight">{isEditing ? "Edit Manager" : "Add Manager"}</DialogTitle>
+            <DialogDescription className="text-indigo-100/70 text-[11px] italic">
+               {isEditing ? "Update account details for high-level management." : "Register and invite new management personnel to the platform."}
+            </DialogDescription>
           </DialogHeader>
           
-          <div className="p-4 space-y-4">
-             <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-white/40">Full Name</Label>
+          <div className="p-6 space-y-4">
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                   <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Manager ID</Label>
+                    <Input 
+                      value={newManager.id}
+                      disabled
+                      className="h-8 rounded-xl border-white/10 bg-white/5 text-xs font-bold opacity-60 cursor-not-allowed"
+                    />
+                </div>
+                <div className="space-y-1">
+                   <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Designation</Label>
+                   <Input 
+                     placeholder="E.g. Senior Lead" 
+                     value={newManager.designation}
+                     onChange={e => setNewManager(p => ({ ...p, designation: e.target.value }))}
+                     className="h-8 rounded-xl border-white/10 bg-white/5 text-xs font-bold focus-visible:ring-indigo-500/30"
+                   />
+                </div>
+             </div>
+             
+             <div className="space-y-1">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Full Name</Label>
                 <Input 
-                  placeholder="Enter name..." 
+                  placeholder="Enter manager name..." 
                   value={newManager.name}
                   onChange={e => setNewManager(p => ({ ...p, name: e.target.value }))}
-                  className="h-8 rounded-xl border-white/10 bg-white/5 text-[10px] font-bold focus-visible:ring-indigo-500/30"
+                  className="h-8 rounded-xl border-white/10 bg-white/5 text-xs font-bold focus-visible:ring-indigo-500/30"
                 />
              </div>
-             <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-white/40">Email Address</Label>
-                <Input 
-                  type="email"
-                  placeholder="manager@org.com" 
-                  value={newManager.email}
-                  onChange={e => setNewManager(p => ({ ...p, email: e.target.value }))}
-                  className="h-8 rounded-xl border-white/10 bg-white/5 text-[10px] font-bold focus-visible:ring-indigo-500/30"
-                />
+
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                   <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Work Email</Label>
+                   <Input 
+                     type="email"
+                     placeholder="work@org.com" 
+                     value={newManager.workEmail}
+                     onChange={e => setNewManager(p => ({ ...p, workEmail: e.target.value }))}
+                     className="h-8 rounded-xl border-white/10 bg-white/5 text-xs font-bold focus-visible:ring-indigo-500/30"
+                   />
+                </div>
+                <div className="space-y-1">
+                   <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Personal Email</Label>
+                   <Input 
+                     type="email"
+                     placeholder="personal@mail.com" 
+                     value={newManager.personalEmail}
+                     onChange={e => setNewManager(p => ({ ...p, personalEmail: e.target.value }))}
+                     className="h-8 rounded-xl border-white/10 bg-white/5 text-xs font-bold focus-visible:ring-indigo-500/30"
+                   />
+                </div>
              </div>
-             <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-white/40">Specialty</Label>
-                <Input 
-                  placeholder="E.g. Product Design" 
-                  value={newManager.specialty}
-                  onChange={e => setNewManager(p => ({ ...p, specialty: e.target.value }))}
-                  className="h-8 rounded-xl border-white/10 bg-white/5 text-[10px] font-bold focus-visible:ring-indigo-500/30"
-                />
+
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                   <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Phone Number</Label>
+                   <Input 
+                     placeholder="+1 234 567 890" 
+                     value={newManager.phone}
+                     onChange={e => setNewManager(p => ({ ...p, phone: e.target.value }))}
+                     className="h-8 rounded-xl border-white/10 bg-white/5 text-xs font-bold focus-visible:ring-indigo-500/30"
+                   />
+                </div>
+                <div className="space-y-1">
+                   <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Account Status</Label>
+                   <Select value={newManager.status} onValueChange={v => setNewManager(p => ({ ...p, status: v }))}>
+                      <SelectTrigger className="h-8 rounded-xl border-white/10 bg-white/5 text-xs font-bold focus:ring-indigo-500/30">
+                         <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-white/10 text-white rounded-xl shadow-2xl">
+                         <SelectItem value="Active" className="text-xs">Active</SelectItem>
+                         <SelectItem value="Inactive" className="text-xs">Inactive</SelectItem>
+                      </SelectContent>
+                   </Select>
+                </div>
              </div>
           </div>
 
-          <DialogFooter className="p-4 pt-0 flex gap-2 justify-end">
-             <Button variant="ghost" className="h-8 px-4 rounded-xl text-[10px] font-bold text-white/60 hover:text-white" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
-             <Button className="h-8 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 border-none" onClick={handleAddManager}>
-                Confirm addition
+          <DialogFooter className="p-6 pt-0 flex gap-3 justify-end bg-slate-900/50">
+             <Button variant="ghost" className="h-9 px-6 rounded-xl text-xs font-bold text-white/60 hover:text-white" onClick={() => { setIsAddModalOpen(false); setIsEditing(false); }}>Cancel</Button>
+             <Button className="h-9 px-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20 border-none transition-all active:scale-95" onClick={handleSaveManager}>
+                {isEditing ? "Save Changes" : "Send Invite"}
              </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Review Manager Modal */}
+      {/* View/Review Manager Modal */}
       <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-        <DialogContent className="sm:max-w-[340px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-slate-900 text-white">
-          <DialogHeader className="bg-emerald-600 p-4 text-left">
-            <DialogTitle className="text-base font-black tracking-tight uppercase">Leader Review</DialogTitle>
-            <DialogDescription className="text-emerald-100/70 text-[10px] italic">Operational audit for {selectedManager?.name}.</DialogDescription>
+        <DialogContent className="sm:max-w-[650px] rounded-3xl border-none shadow-2xl p-0 bg-slate-900 text-white">
+          <DialogHeader className="bg-emerald-600 p-5 text-left">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center border border-white/30 backdrop-blur-sm">
+                <Target className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-black tracking-tight uppercase">Manager Details</DialogTitle>
+                <DialogDescription className="text-emerald-100/70 text-[10px] italic leading-none">Strategic profile for {selectedManager?.name}</DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
           
-          <div className="p-4 space-y-4">
-             <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2.5 bg-white/5 p-2 rounded-xl border border-white/5">
-                   <div className="h-7 w-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                      <Award className="h-4 w-4 text-emerald-400" />
-                   </div>
-                   <div>
-                      <p className="text-[7px] font-black uppercase tracking-widest text-white/40 leading-none mb-0.5">Efficiency</p>
-                      <p className="text-xs font-black text-emerald-400">{selectedManager?.score}%</p>
-                   </div>
+          <div className="p-5 space-y-5">
+             {/* Section 1: Core Identity (Wide Layout) */}
+             <div className="grid grid-cols-3 gap-y-4 gap-x-6">
+                <div className="space-y-0.5">
+                   <p className="text-[8px] font-black uppercase tracking-widest text-white/40">Manager ID</p>
+                   <p className="text-xs font-bold text-white/90">{selectedManager?.id || "N/A"}</p>
                 </div>
-                <div className="flex items-center gap-2.5 bg-white/5 p-2 rounded-xl border border-white/5">
-                   <div className="h-7 w-7 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-                      <FolderKanban className="h-4 w-4 text-indigo-400" />
+                <div className="space-y-0.5">
+                   <p className="text-[8px] font-black uppercase tracking-widest text-white/40">Full Name</p>
+                   <p className="text-xs font-bold text-white/90">{selectedManager?.name}</p>
+                </div>
+                <div className="space-y-0.5">
+                   <p className="text-[8px] font-black uppercase tracking-widest text-white/40">Account Status</p>
+                   <Badge className={`${selectedManager?.status === 'Delayed' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'} border-none text-[7px] h-3.5 px-1.5 uppercase font-black`}>
+                      {selectedManager?.status || 'Active'}
+                   </Badge>
+                </div>
+                <div className="space-y-0.5">
+                   <p className="text-[8px] font-black uppercase tracking-widest text-white/40">Designation</p>
+                   <p className="text-xs font-bold text-emerald-400">{selectedManager?.specialty || "Senior Lead"}</p>
+                </div>
+                <div className="space-y-0.5">
+                   <p className="text-[8px] font-black uppercase tracking-widest text-white/40">Work Email</p>
+                   <p className="text-xs font-bold text-white/70 truncate">{selectedManager?.email || selectedManager?.workEmail || "N/A"}</p>
+                </div>
+                <div className="space-y-0.5">
+                   <p className="text-[8px] font-black uppercase tracking-widest text-white/40">Phone Number</p>
+                   <p className="text-xs font-bold text-white/70">{selectedManager?.phone || "+1 234 567 890"}</p>
+                </div>
+             </div>
+
+             {/* Section 2: Account Info (Horizontal Layout) */}
+             <div className="bg-white/[0.03] p-3 rounded-2xl border border-white/5">
+                <div className="grid grid-cols-3 gap-4">
+                   <div className="space-y-0.5">
+                      <p className="text-[7px] font-black text-white/30 uppercase tracking-wider">Invite Status</p>
+                      <p className="text-[10px] font-bold text-white/80">Activated</p>
                    </div>
-                   <div>
-                      <p className="text-[7px] font-black uppercase tracking-widest text-white/40 leading-none mb-0.5">Projects</p>
-                      <p className="text-xs font-black text-indigo-400">{selectedManager?.projects}</p>
+                   <div className="space-y-0.5">
+                      <p className="text-[7px] font-black text-white/30 uppercase tracking-wider">Created Date</p>
+                      <p className="text-[10px] font-bold text-white/80">Jan 12, 2026</p>
+                   </div>
+                   <div className="space-y-0.5">
+                      <p className="text-[7px] font-black text-white/30 uppercase tracking-wider">Created By</p>
+                      <p className="text-[10px] font-bold text-indigo-400">Super Admin</p>
                    </div>
                 </div>
              </div>
 
-             <div className="space-y-3 bg-white/[0.02] p-3 rounded-xl border border-white/5">
-                <div className="flex items-center justify-between">
-                   <p className="text-[8px] font-black uppercase tracking-widest text-white/30">Profile Metadata</p>
-                   <Badge className="text-[7px] h-3.5 bg-emerald-500/20 text-emerald-400 border-none px-1 uppercase font-black">{selectedManager?.status}</Badge>
-                </div>
-                <div className="space-y-2">
-                   <div className="flex items-start gap-2">
-                       <Mail className="h-3 w-3 text-white/40 mt-0.5 shrink-0" />
-                       <span className="text-[10px] font-medium text-white/70">{selectedManager?.email}</span>
-                   </div>
-                   <div className="flex items-start gap-2">
-                       <Target className="h-3 w-3 text-white/40 mt-0.5 shrink-0" />
-                       <span className="text-[10px] font-medium text-white/70">{selectedManager?.specialty}</span>
-                   </div>
-                </div>
-             </div>
 
-             <div className="space-y-1.5 container-indicator">
-                <p className="text-[8px] font-black uppercase tracking-widest text-white/30">Strategic Notes</p>
-                <div className="text-[10px] leading-relaxed text-indigo-100/70 italic bg-indigo-500/5 p-2 rounded-lg border-l-2 border-emerald-500/30">
-                   {selectedManager?.name} is maintaining peak velocity with zero critical blockers. Recommended for high-priority stream expansion.
-                </div>
-             </div>
           </div>
 
-          <DialogFooter className="p-4 pt-0">
-             <Button className="w-full h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-[10px] font-black uppercase tracking-widest border-none transition-all active:scale-95" onClick={() => { toast.success("Review finalized."); setIsReviewOpen(false); }}>
-                Approve Audit
+          <DialogFooter className="p-4 bg-slate-900/50 flex">
+             <Button className="w-full h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-[10px] font-black uppercase tracking-widest border-none transition-all active:scale-95" onClick={() => setIsReviewOpen(false)}>
+                Confirm
              </Button>
           </DialogFooter>
         </DialogContent>

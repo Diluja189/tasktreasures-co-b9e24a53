@@ -12,36 +12,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-const statCards = [
-  { title: "Assigned Tasks", value: "08", icon: ListTodo, color: "text-indigo-500", bg: "bg-indigo-500/10" },
-  { title: "In Progress", value: "03", icon: Clock, color: "text-amber-500", bg: "bg-amber-500/10" },
-  { title: "Completed", value: "04", icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-  { title: "Delayed", value: "01", icon: AlertCircle, color: "text-rose-500", bg: "bg-rose-500/10" },
-  { title: "Today's Tracked", value: "3h 20m", icon: Timer, color: "text-purple-500", bg: "bg-purple-500/10" },
-];
-
-const donutData = [
-  { name: "In Progress", value: 3, color: "#f59e0b" },
-  { name: "Completed", value: 4, color: "#10b981" },
-  { name: "Delayed", value: 1, color: "#f43f5e" },
-];
-
-const todaysTasks = [
-  { id: "T1", name: "AWS S3 Bucket Config", project: "Cloud Migration", deadline: "Today", priority: "High", progress: 65 },
-  { id: "T2", name: "OAuth2 Integration", project: "Security Infra", deadline: "Today", priority: "High", progress: 40 },
-];
-
-const recentActivity = [
-  { task: "UI Polish - Sidebar", action: "Status updated to In Progress", time: "2h ago" },
-  { task: "DB Indexing Audit", action: "Marked as Completed", time: "Yesterday" },
-  { task: "OAuth2 Integration", action: "Time logged: 2h 15m", time: "Yesterday" },
-];
-
-const upcomingDeadlines = [
-  { task: "AWS S3 Bucket Config", due: "Today", project: "Cloud Migration", urgent: true },
-  { task: "Chart.js Theme Registry", due: "In 3 days", project: "SaaS Dashboard", urgent: false },
-  { task: "API Docs v3", due: "In 5 days", project: "Cloud Migration", urgent: false },
-];
+const statCards = [];
+const donutData = [];
+const todaysTasks = [];
+const recentActivity = [];
+const upcomingDeadlines = [];
 
 export function MemberDashboard() {
   const navigate = useNavigate();

@@ -15,13 +15,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
-const myTasks = [
-  { id: "T1", name: "AWS S3 Bucket Config", project: "Cloud Migration", description: "Configure S3 buckets for staging and production environments.", priority: "High", status: "In Progress", deadline: "2026-04-18", estHours: 8, loggedHours: 5.5 },
-  { id: "T2", name: "OAuth2 Provider Integration", project: "Security Infrastructure", description: "Implement OAuth2 with Google and GitHub providers.", priority: "High", status: "Not Started", deadline: "2026-04-20", estHours: 12, loggedHours: 0 },
-  { id: "T3", name: "Chart.js Theme Registry", project: "SaaS Dashboard", description: "Build a centralized chart theme configuration module.", priority: "Medium", status: "In Progress", deadline: "2026-04-25", estHours: 6, loggedHours: 2 },
-  { id: "T4", name: "DB Indexing Audit", project: "Cloud Migration", description: "Review and optimize database indexes for query performance.", priority: "High", status: "Completed", deadline: "2026-04-15", estHours: 6, loggedHours: 6.5 },
-  { id: "T5", name: "API Docs v3", project: "Cloud Migration", description: "Update internal API documentation to OpenAPI 3.0 standard.", priority: "Low", status: "Delayed", deadline: "2026-04-12", estHours: 4, loggedHours: 1 },
-];
+const myTasks = [];
 
 const priorityStyles: Record<string, string> = {
   High: "bg-rose-500/10 text-rose-600 border-none",

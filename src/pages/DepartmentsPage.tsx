@@ -2,14 +2,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Plus, Users, FolderKanban } from "lucide-react";
 
-const departments = [
-  { name: "Engineering", teams: 4, members: 45, projects: 12, head: "Sarah Chen" },
-  { name: "Design", teams: 2, members: 20, projects: 6, head: "Mark Taylor" },
-  { name: "Marketing", teams: 3, members: 18, projects: 8, head: "Jane Cooper" },
-  { name: "Sales", teams: 2, members: 12, projects: 4, head: "Tom Harris" },
-  { name: "HR", teams: 1, members: 5, projects: 2, head: "Amy Brooks" },
-  { name: "DevOps", teams: 2, members: 10, projects: 5, head: "David Kim" },
-];
+const departments = [];
 
 const DepartmentsPage = () => (
   <div className="space-y-6">

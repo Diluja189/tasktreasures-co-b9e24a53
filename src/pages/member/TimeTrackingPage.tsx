@@ -14,29 +14,10 @@ import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
-const assignedTasks = [
-  { id: "T1", name: "AWS S3 Bucket Config", project: "Cloud Migration", estHours: 8 },
-  { id: "T2", name: "OAuth2 Provider Integration", project: "Security Infrastructure", estHours: 12 },
-  { id: "T3", name: "Chart.js Theme Registry", project: "SaaS Dashboard", estHours: 6 },
-];
-
-const timeLog = [
-  { task: "DB Indexing Audit", project: "Cloud Migration", duration: "2h 30m", date: "Today", notes: "Completed index analysis" },
-  { task: "AWS S3 Bucket Config", project: "Cloud Migration", duration: "3h 00m", date: "Today", notes: "Staging bucket configured" },
-  { task: "OAuth2 Integration", project: "Security Infra", duration: "1h 45m", date: "Yesterday", notes: "OAuth2 flow tested" },
-];
-
-const weekSummary = [
-  { day: "Mon", hours: 6.5 },
-  { day: "Tue", hours: 7.2 },
-  { day: "Wed", hours: 5.0 },
-  { day: "Thu", hours: 8.0 },
-  { day: "Fri", hours: 3.3 },
-  { day: "Sat", hours: 0 },
-  { day: "Sun", hours: 0 },
-];
-
-const todayTotal = 5.5; // hours
+const assignedTasks = [];
+const timeLog = [];
+const weekSummary = [];
+const todayTotal = 0;
 
 export default function TimeTrackingPage() {
   const [activeTask, setActiveTask] = useState("");

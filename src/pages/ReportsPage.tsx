@@ -1,315 +1,385 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
-  BarChart3, Download, FileText, TrendingUp, Users, Calendar, 
-  UserCircle, RefreshCw, Activity, PieChart as PieChartIcon, 
-  ArrowUpRight, ArrowDownRight, Filter, Search, FileDown, LineChart as LineChartIcon,
-  X, Briefcase, LayoutDashboard, Zap, Target, Clock, Star, Award
+  Users, ChevronRight, Briefcase, FileText, ArrowLeft, 
+  Calendar, CheckCircle2, TrendingUp, Award, BarChart3,
+  XCircle, Clock, Target, AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { 
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  CartesianGrid, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area 
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
-} from "@/components/ui/select";
-import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
-import { useSearchParams, useNavigate } from "react-router-dom";
-
-// Standard mock projects (matching ProjectsPage)
-const projectsList = [
-  { id: "PRJ-001", name: "E-Commerce Platform", manager: "Sarah Chen", deadline: "2025-07-15", status: "Active" },
-  { id: "PRJ-002", name: "Mobile App v3.0", manager: "Sarah Chen", deadline: "2025-08-01", status: "Delayed" },
-  { id: "PRJ-003", name: "Analytics Dashboard", manager: "Lisa Wang", deadline: "2025-08-15", status: "Active" },
-  { id: "PRJ-004", name: "Security Audit", manager: "David Kim", deadline: "2025-06-15", status: "Completed" },
-];
-
-// DATA FROM PERFORMANCE PAGE (Global Mode)
-const globalEfficiencyData = [
-  { name: "Week 1", actual: 85, estimated: 90 },
-  { name: "Week 2", actual: 92, estimated: 88 },
-  { name: "Week 3", actual: 78, estimated: 82 },
-  { name: "Week 4", actual: 94, estimated: 90 },
-];
-
-const globalTeamData = [
-  { name: "Engineering", value: 94, color: "#6366f1" },
-  { name: "Design", value: 88, color: "#10b981" },
-  { name: "Marketing", value: 76, color: "#f59e0b" },
-  { name: "Ops", value: 82, color: "#f43f5e" },
-];
-
-const globalStats = [
-  { label: "Organization Efficiency", value: "88.4%", trend: "+2.4%", icon: Zap, color: "text-amber-500", bg: "bg-amber-500/10" },
-  { label: "Resource Utilization", value: "92.1%", trend: "+1.8%", icon: Users, color: "text-indigo-500", bg: "bg-indigo-500/10" },
-  { label: "SLA Compliance", value: "96.8%", trend: "-0.5%", icon: Target, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-  { label: "Idle Capacity", value: "11.6%", trend: "-1.2%", icon: Clock, color: "text-rose-500", bg: "bg-rose-500/10" },
-];
-
-// DATA FOR PROJECT MODE (Mocked)
-const projectTimelineData = [
-  { name: "Mon", efficiency: 82 },
-  { name: "Tue", efficiency: 88 },
-  { name: "Wed", efficiency: 85 },
-  { name: "Thu", efficiency: 91 },
-  { name: "Fri", efficiency: 94 },
-];
-
-const projectRiskData = [
-  { name: "Resource Gap", value: 25, color: "#6366f1" },
-  { name: "Tech Challenges", value: 75, color: "#f43f5e" },
-];
-
-const projectResourceData = [
-  { name: "Developers", efficiency: 94, onTime: 92 },
-  { name: "Designers", efficiency: 86, onTime: 80 },
-  { name: "QA", efficiency: 98, onTime: 100 },
-];
+import { Progress } from "@/components/ui/progress";
 
 export default function ReportsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const projectId = searchParams.get("projectId");
+  const [managers, setManagers] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   
-  const selectedProject = useMemo(() => {
-    return projectsList.find(p => p.id === projectId);
-  }, [projectId]);
+  const [selectedManager, setSelectedManager] = useState<any>(null);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
 
-  const isProjectMode = !!selectedProject;
+  useEffect(() => {
+    const loadData = () => {
+      const m = localStorage.getItem("app_managers_persistence");
+      const p = localStorage.getItem("app_projects_persistence");
+      setManagers(m ? JSON.parse(m) : []);
+      setProjects(p ? JSON.parse(p) : []);
+    };
+    loadData();
+    window.addEventListener("storage", loadData);
+    return () => window.removeEventListener("storage", loadData);
+  }, []);
 
-  const handleClearFilter = () => {
-    setSearchParams({});
+  // ── Calculation Helpers ────────────────────────────────────────────────
+  const getProjectDetails = (p: any) => {
+    const total = p.totalTasks || 0;
+    const comp = p.completedTasks || 0;
+    const delayed = p.delayedTasks || 0;
+    
+    let hasStarted = total > 0;
+    let actualProgress = hasStarted ? Math.round((comp / total) * 100) : 0;
+
+    const start = new Date(p.startDate || new Date());
+    const end = new Date(p.deadline || new Date());
+    const today = new Date();
+
+    let expectedProgress = 0;
+    if (today >= end) expectedProgress = 100;
+    else if (today <= start) expectedProgress = 0;
+    else {
+      const totalDays = end.getTime() - start.getTime();
+      const elapsedDays = today.getTime() - start.getTime();
+      expectedProgress = Math.round((elapsedDays / totalDays) * 100);
+    }
+
+    let status = "On Track";
+    if (actualProgress > expectedProgress) status = "Ahead";
+    else if (actualProgress < expectedProgress) status = "Behind";
+
+    let managerPerf = null;
+    let members = p.teamMembers || [];
+
+    if (hasStarted) {
+      const progressScore = expectedProgress === 0 ? 100 : Math.min(100, Math.round((actualProgress / expectedProgress) * 100));
+      const completionRate = Math.round((comp / total) * 100);
+      const onTimeDelivery = Math.max(0, Math.round(((total - delayed) / total) * 100));
+      const delayControl = Math.max(0, 100 - Math.round((delayed / total) * 100));
+
+      const managerScore = Math.round(
+        (progressScore * 0.4) + (completionRate * 0.3) + (onTimeDelivery * 0.2) + (delayControl * 0.1)
+      );
+
+      managerPerf = { score: managerScore };
+
+      if (members.length === 0) {
+        // Fallback team member if none created
+        const teamEfficiency = Math.round((completionRate * 0.6) + (onTimeDelivery * 0.4));
+        members = [{ name: "Project Team", assignedCount: total, completedTasks: comp, delayedTasks: delayed, pendingTasks: total - comp, efficiency: teamEfficiency }];
+      } else {
+        members = members.map((m: any) => {
+          const mTotal = m.assignedCount || 1;
+          const mComp = m.completedTasks || 0;
+          const mDel = m.delayedTasks || 0;
+          const mOnTime = Math.max(0, 100 - Math.round((mDel / mTotal) * 100));
+          const mCompRate = Math.round((mComp / mTotal) * 100);
+          const mEff = Math.round((mCompRate * 0.6) + (mOnTime * 0.4));
+          return {
+            ...m,
+            assignedCount: mTotal,
+            completedTasks: mComp,
+            delayedTasks: mDel,
+            pendingTasks: mTotal - mComp,
+            efficiency: mEff
+          };
+        });
+      }
+    }
+
+    return { ...p, hasStarted, expectedProgress, actualProgress, status, managerPerf, members };
   };
 
-  const projectStats = [
-    { label: "Completion Rate", value: "65.0%", trend: "+5.2%", icon: TrendingUp, color: "text-indigo-500", bg: "bg-indigo-500/10" },
-    { label: "On-Time Delivery", value: "82.4%", trend: "+2.1%", icon: Calendar, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-    { label: "Project Hours", value: "320h", trend: "+40h", icon: Clock, color: "text-amber-500", bg: "bg-amber-500/10" },
-    { label: "Team Efficiency", value: "91.2%", trend: "+3.4%", icon: Activity, color: "text-blue-500", bg: "bg-blue-500/10" },
-  ];
+  // ── Render Level 1: Managers List ──────────────────────────────────────
+  if (!selectedManager && !selectedProject) {
+    const managersWithCount = managers.map(m => {
+      const pCount = projects.filter(p => p.manager === m.name).length;
+      return { ...m, pCount };
+    });
 
-  const currentStats = isProjectMode ? projectStats : globalStats;
+    return (
+      <div className="space-y-6 pb-10 pt-5">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-black tracking-tight text-foreground">Management Reports</h1>
+          <p className="text-xs text-muted-foreground">Select a manager to view their assigned projects and performance health.</p>
+        </div>
 
-  return (
-    <div className="space-y-8 pb-10 px-4 pt-4">
-      {/* Dynamic Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-             <h1 className="text-3xl font-bold tracking-tight text-foreground">
-               {isProjectMode ? "Project Report" : "Performance Analytics"}
-             </h1>
+        {managersWithCount.length === 0 ? (
+          <div className="py-20 flex flex-col items-center justify-center text-center">
+            <Users className="h-12 w-12 text-muted-foreground/30 mb-3" />
+            <h3 className="font-black text-lg text-foreground/50">No Managers Found</h3>
+            <p className="text-xs text-muted-foreground">Please ensure managers are created in the system.</p>
+          </div>
+        ) : (
+          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-border/50">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-secondary/30 border-b border-border/40">
+                  <tr>
+                    <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Manager Identity</th>
+                    <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">Designation</th>
+                    <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">Assigned Projects</th>
+                    <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {managersWithCount.map((manager, idx) => (
+                    <tr 
+                      key={manager.id || idx} 
+                      className="hover:bg-secondary/10 transition-colors cursor-pointer group" 
+                      onClick={() => setSelectedManager(manager)}
+                    >
+                      <td className="py-4 px-5 flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-black uppercase ring-1 ring-indigo-500/20 group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
+                          {manager.avatar || manager.name.substring(0, 2)}
+                        </div>
+                        <span className="text-sm font-bold text-foreground">{manager.name}</span>
+                      </td>
+                      <td className="py-4 px-5 text-center">
+                        <Badge variant="outline" className="text-[10px] uppercase tracking-widest font-bold border-none bg-secondary/40 text-muted-foreground">
+                          {manager.designation || "Manager"}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-5 text-center">
+                        <Badge variant="secondary" className="text-[11px] font-black pointer-events-none rounded-lg bg-indigo-500/10 text-indigo-700 border-none px-3 py-1">
+                          <Briefcase className="h-3 w-3 mr-1.5" /> {manager.pCount}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-5 text-right">
+                        <span className="flex items-center justify-end text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-indigo-500 transition-colors">
+                          View Projects <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // ── Render Level 2: Manager's Projects ─────────────────────────────────
+  if (selectedManager && !selectedProject) {
+    const managerProjects = projects.filter(p => p.manager === selectedManager.name).map(getProjectDetails);
+
+    return (
+      <div className="space-y-6 pb-10 pt-5">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-none bg-secondary/50 hover:bg-secondary" onClick={() => setSelectedManager(null)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-black tracking-tight">{selectedManager.name}'s Performance</h1>
+            <p className="text-xs text-muted-foreground mt-0.5 uppercase tracking-widest font-bold">{selectedManager.designation || "Manager"}</p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-           <Button variant="outline" size="sm" className="h-9 rounded-xl gap-2 transition-all hover:bg-secondary/50" onClick={() => toast.info("Data refreshed.")}>
-              <RefreshCw className="h-4 w-4" /> Refresh
-           </Button>
-           <Button size="sm" className="h-9 rounded-xl gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 font-bold active:scale-95 transition-all">
-              <FileDown className="h-4 w-4" /> Export Report
-           </Button>
-        </div>
+
+        {managerProjects.length === 0 ? (
+          <div className="py-20 flex flex-col items-center justify-center text-center bg-secondary/10 rounded-3xl border border-dashed border-secondary/30">
+            <Briefcase className="h-10 w-10 text-muted-foreground/30 mb-3" />
+            <h3 className="font-black text-sm text-foreground/60 uppercase tracking-widest">No Assigned Projects</h3>
+            <p className="text-xs text-muted-foreground mt-1">This manager has no projects assigned to them.</p>
+          </div>
+        ) : (
+          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-border/50">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-secondary/30 border-b border-border/40">
+                  <tr>
+                    <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Project Name</th>
+                    <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">Status</th>
+                    <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">Timeline</th>
+                    <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {managerProjects.map((project, idx) => (
+                    <tr 
+                      key={project.id || idx} 
+                      className="hover:bg-secondary/10 transition-colors cursor-pointer group" 
+                      onClick={() => setSelectedProject(project)}
+                    >
+                      <td className="py-4 px-5">
+                        <span className="text-sm font-bold text-foreground">{project.name}</span>
+                      </td>
+                      <td className="py-4 px-5 text-center">
+                        <Badge variant="outline" className={`text-[10px] font-black uppercase tracking-widest border-none px-2.5 py-1 ${
+                          project.status === "Active" ? "bg-emerald-500/10 text-emerald-600" :
+                          project.status === "Delayed" ? "bg-rose-500/10 text-rose-600" :
+                          "bg-indigo-500/10 text-indigo-600"
+                        }`}>
+                          {project.status || "Pending"}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-5 text-center">
+                        <Badge variant="secondary" className="text-[10px] font-black pointer-events-none rounded-lg bg-secondary/30 text-muted-foreground hover:bg-secondary/30 border-none px-3 py-1">
+                          <Calendar className="h-3 w-3 mr-1.5 inline -mt-0.5" /> {project.startDate} — {project.deadline}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-5 text-right">
+                        <span className="flex items-center justify-end text-[10px] font-black uppercase tracking-widest text-muted-foreground group-hover:text-indigo-500 transition-colors">
+                          View Performance <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
       </div>
+    );
+  }
 
-      {/* Mode Switches & Navigation */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-1 p-1 bg-secondary/30 rounded-xl w-fit border border-secondary/50">
-          <Button 
-            variant={!isProjectMode ? "secondary" : "ghost"} 
-            size="sm" 
-            className={`h-8 text-[10px] uppercase font-black tracking-widest rounded-lg gap-1.5 px-4 ${!isProjectMode ? 'bg-white shadow-sm ring-1 ring-black/5' : 'text-muted-foreground'}`}
-            onClick={() => navigate("/reports")}
-          >
-            <LayoutDashboard className="h-3.5 w-3.5" /> Global View
-          </Button>
-          <Button 
-            variant={isProjectMode ? "secondary" : "ghost"} 
-            size="sm" 
-            disabled={!isProjectMode}
-            className={`h-8 text-[10px] uppercase font-black tracking-widest rounded-lg gap-1.5 px-4 ${isProjectMode ? 'bg-white shadow-sm ring-1 ring-black/5' : 'text-muted-foreground/40'}`}
-          >
-            <Briefcase className="h-3.5 w-3.5" /> Project View
-          </Button>
+  // ── Render Level 3: Project Performance Details ───────────────────────
+  if (selectedProject) {
+    // Re-verify project calculations
+    const p = getProjectDetails(selectedProject);
+
+    return (
+      <div className="space-y-6 pb-10 pt-5">
+        {/* Navigation / Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-none bg-secondary/50 hover:bg-secondary" onClick={() => setSelectedProject(null)}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight text-indigo-900 dark:text-indigo-100">{p.name}</h1>
+              <p className="text-[10px] font-bold text-muted-foreground mt-0.5 uppercase tracking-widest flex items-center gap-2">
+                <Users className="h-3 w-3" /> Managed by {selectedManager?.name}
+              </p>
+            </div>
+          </div>
+          <Badge className={`text-[10px] font-black uppercase px-3 py-1 border-none rounded-lg ${
+            p.status === "Ahead" ? "bg-emerald-500/10 text-emerald-600" :
+            p.status === "Behind" ? "bg-rose-500/10 text-rose-600" :
+            "bg-indigo-500/10 text-indigo-600"
+          }`}>
+            Status: {p.status}
+          </Badge>
         </div>
 
-      </div>
-
-      {/* Project Details Section (Project Mode Only) */}
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-         {currentStats.map((stat, i) => (
-           <motion.div 
-             key={stat.label}
-             initial={{ opacity: 0, scale: 0.95 }}
-             animate={{ opacity: 1, scale: 1 }}
-             transition={{ delay: i * 0.05 }}
-           >
-              <Card className="border-none shadow-md bg-card/60 backdrop-blur-sm group hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden relative border border-white/5">
-                 <CardContent className="p-4">
-                    <div className="flex items-center justify-between gap-4">
-                       <div className="flex items-center gap-3">
-                          <div className={`p-2.5 rounded-xl ${stat.bg} ${stat.color} group-hover:rotate-6 transition-transform duration-500 shadow-sm`}>
-                             <stat.icon className="h-4 w-4" />
-                          </div>
-                          <div>
-                             <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 leading-none mb-1">{stat.label}</p>
-                             <h3 className="text-xl font-black tracking-tight">{stat.value}</h3>
-                          </div>
-                       </div>
-                       <Badge variant="outline" className={`border-none font-black text-[8px] px-1.5 h-4 uppercase ${stat.trend.startsWith('+') ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
-                          {stat.trend}
-                       </Badge>
-                    </div>
-                 </CardContent>
+        {!p.hasStarted ? (
+          <div className="py-20 bg-secondary/5 rounded-3xl border border-dashed border-secondary/20 flex flex-col items-center justify-center text-center">
+             <div className="h-16 w-16 bg-secondary/20 rounded-full flex items-center justify-center mb-3">
+               <AlertTriangle className="h-8 w-8 text-muted-foreground/40" />
+             </div>
+             <h3 className="font-black text-lg text-foreground/50 uppercase tracking-widest">Performance Not Available</h3>
+             <p className="text-xs text-muted-foreground mt-1">Metrics will generate automatically once tasks are created and begin processing.</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            
+            {/* Manager Performance Section */}
+            <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-indigo-600 bg-indigo-500/10 w-fit px-3 py-1.5 rounded-lg">
+              <Award className="h-4 w-4" /> Manager Performance Breakdown
+            </h2>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              
+              {/* Score & Status */}
+              <Card className="border-none shadow-sm rounded-3xl bg-card/60">
+                <CardContent className="p-6 flex items-center gap-6">
+                   <div className="relative h-20 w-20 flex items-center justify-center shrink-0">
+                      <svg className="h-20 w-20 transform -rotate-90">
+                         <circle cx="40" cy="40" r="36" fill="transparent" stroke="currentColor" strokeWidth="6" className="text-secondary/20" />
+                         <circle
+                           cx="40" cy="40" r="36" fill="transparent" stroke="currentColor" strokeWidth="6"
+                           strokeDasharray={226} 
+                           strokeDashoffset={226 - (226 * p.managerPerf.score) / 100}
+                           strokeLinecap="round" className="text-indigo-600"
+                         />
+                      </svg>
+                      <span className="absolute text-lg font-black">{p.managerPerf.score}%</span>
+                   </div>
+                   <div className="space-y-1.5">
+                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Overall Efficiency</p>
+                     <h3 className="text-xl font-black">{selectedManager?.name}</h3>
+                     <Badge className="bg-indigo-600 text-white rounded-md text-[8px] font-black uppercase border-none tracking-widest">
+                       {p.managerPerf.score >= 90 ? 'Excellent' : p.managerPerf.score >= 75 ? 'Good' : p.managerPerf.score >= 50 ? 'Average' : 'Needs Attention'}
+                     </Badge>
+                   </div>
+                </CardContent>
               </Card>
-           </motion.div>
-         ))}
-      </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-           key={isProjectMode ? "project-view" : "global-view"}
-           initial={{ opacity: 0, y: 10 }}
-           animate={{ opacity: 1, y: 0 }}
-           exit={{ opacity: 0, y: -10 }}
-           transition={{ duration: 0.3 }}
-           className="space-y-8"
-        >
-          {/* Charts Row 1 */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-             <Card className="lg:col-span-8 border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden">
-                <CardHeader className="p-4 pb-2">
-                   <div className="flex items-center justify-between">
-                      <div>
-                         <CardTitle className="text-sm font-black uppercase tracking-tight">
-                            {isProjectMode ? "Efficiency Timeline" : "Throughput Analysis"}
-                         </CardTitle>
-                         <CardDescription className="text-[9px] font-bold">
-                            {isProjectMode ? "Measured daily efficiency score." : "Est vs Actual Analysis."}
-                         </CardDescription>
-                      </div>
-                      {!isProjectMode && (
-                        <div className="flex items-center gap-4">
-                           <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-indigo-500" /> <span className="text-[10px] uppercase font-bold text-muted-foreground">Actual</span></div>
-                           <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-gray-300" /> <span className="text-[10px] uppercase font-bold text-muted-foreground">Estimated</span></div>
-                        </div>
-                      )}
+              {/* Timeline Progress */}
+              <Card className="border-none shadow-sm rounded-3xl bg-card/60 flex flex-col justify-center">
+                <CardContent className="p-6 space-y-5">
+                   <div className="space-y-2">
+                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                       <span>Expected Timeline Progress</span>
+                       <span>{p.expectedProgress}%</span>
+                     </div>
+                     <Progress value={p.expectedProgress} className="h-2 bg-secondary/30 [&>div]:bg-slate-400" />
                    </div>
-                </CardHeader>
-                <CardContent className="p-2 px-4">
-                   <div className="h-[160px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                         <AreaChart data={isProjectMode ? projectTimelineData : globalEfficiencyData}>
-                            <defs>
-                               <linearGradient id="colorMain" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                               </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                            <XAxis dataKey="name" stroke="#888" fontSize={11} tickLine={false} axisLine={false} />
-                            <YAxis stroke="#888" fontSize={11} tickLine={false} axisLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                            <Area type="monotone" dataKey={isProjectMode ? "efficiency" : "actual"} stroke="#6366f1" fillOpacity={1} fill="url(#colorMain)" strokeWidth={4} />
-                            {!isProjectMode && <Area type="monotone" dataKey="estimated" stroke="#ccc" fill="transparent" strokeWidth={2} strokeDasharray="5 5" />}
-                         </AreaChart>
-                      </ResponsiveContainer>
+                   <div className="space-y-2">
+                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                       <span>Actual Work Progress</span>
+                       <span className={p.status === "Behind" ? "text-rose-600" : "text-emerald-600"}>{p.actualProgress}%</span>
+                     </div>
+                     <Progress value={p.actualProgress} className={`h-2 bg-secondary/30 [&>div]:${p.status === "Behind" ? "bg-rose-500" : (p.status === "Ahead" ? "bg-emerald-500" : "bg-indigo-600")}`} />
                    </div>
                 </CardContent>
-             </Card>
-
-             <Card className="lg:col-span-4 border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl">
-                <CardHeader className="p-4 pb-2 text-left">
-                   <CardTitle className="text-sm font-black uppercase tracking-tight">
-                      {isProjectMode ? "Risk Analysis" : "Team Efficiency"}
-                   </CardTitle>
-                   <CardDescription className="text-[9px] font-bold">
-                      {isProjectMode ? "Primary blockage factors." : "Performance by team."}
-                   </CardDescription>
-                </CardHeader>
-                <CardContent className="p-2 px-4 flex-1 flex flex-col justify-center">
-                   <div className="h-[160px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                         <PieChart>
-                            <Pie
-                               data={isProjectMode ? projectRiskData : globalTeamData}
-                               cx="50%"
-                               cy="50%"
-                               innerRadius={65}
-                               outerRadius={85}
-                               paddingAngle={8}
-                               dataKey="value"
-                            >
-                               {(isProjectMode ? projectRiskData : globalTeamData).map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                               ))}
-                            </Pie>
-                            <Tooltip />
-                         </PieChart>
-                      </ResponsiveContainer>
-                   </div>
-                   <div className="grid grid-cols-2 gap-3 mt-6">
-                      {(isProjectMode ? projectRiskData : globalTeamData).map(item => (
-                        <div key={item.name} className="flex items-center gap-2 p-2 bg-secondary/30 rounded-xl border border-secondary/20">
-                           <div className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
-                           <p className="text-[9px] font-black uppercase truncate">{item.name}</p>
-                           <span className="text-[10px] font-bold bg-white/50 px-1 rounded ml-auto">{item.value}%</span>
-                        </div>
-                      ))}
-                   </div>
-                </CardContent>
-             </Card>
-          </div>
-
-          {/* Row 2: Bottom Contextual Content */}
-          {!isProjectMode ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
+              </Card>
 
             </div>
-          ) : (
-             <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden">
-                <CardHeader className="p-4 pb-2">
-                   <CardTitle className="text-sm font-black uppercase tracking-tight">Resource Performance Matrix</CardTitle>
-                   <CardDescription className="text-[9px] font-bold">Performance categories.</CardDescription>
-                </CardHeader>
-                <CardContent className="p-2 px-4 pt-4">
-                   <div className="h-[230px] w-full">
-                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={projectResourceData}>
-                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                           <XAxis dataKey="name" axisLine={false} tickLine={false} stroke="#888" fontSize={11} />
-                           <YAxis axisLine={false} tickLine={false} stroke="#888" fontSize={11} />
-                           <Tooltip cursor={{fill: 'rgba(99, 102, 241, 0.05)'}} />
-                           <Bar dataKey="efficiency" name="Efficiency %" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={40} />
-                           <Bar dataKey="onTime" name="On-Time Delivery %" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
-                        </BarChart>
-                     </ResponsiveContainer>
-                  </div>
-               </CardContent>
+
+            {/* Team Performance Table */}
+            <h2 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-indigo-600 bg-indigo-500/10 w-fit px-3 py-1.5 rounded-lg mt-8">
+              <Users className="h-4 w-4" /> Team Member Performance
+            </h2>
+
+            <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-border/50">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-secondary/30 border-b border-border/40">
+                    <tr>
+                      <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest">Member Name</th>
+                      <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">Assigned</th>
+                      <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">Completed</th>
+                      <th className="py-4 px-5 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-center">Pending</th>
+                      <th className="py-4 px-5 text-[10px] font-black text-rose-500/70 uppercase tracking-widest text-center">Delayed</th>
+                      <th className="py-4 px-5 text-[10px] font-black text-indigo-600 uppercase tracking-widest text-right">Efficiency %</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/20">
+                    {p.members.map((m: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-secondary/10 transition-colors">
+                        <td className="py-4 px-5">
+                          <span className="text-sm font-bold text-foreground">{m.name}</span>
+                        </td>
+                        <td className="py-4 px-5 text-center font-black text-sm">{m.assignedCount}</td>
+                        <td className="py-4 px-5 text-center font-black text-sm text-emerald-600">{m.completedTasks}</td>
+                        <td className="py-4 px-5 text-center font-black text-sm text-amber-600">{m.pendingTasks}</td>
+                        <td className="py-4 px-5 text-center font-black text-sm text-rose-600">{m.delayedTasks}</td>
+                        <td className="py-4 px-5 text-right">
+                          <Badge className={`text-xs font-black px-2.5 py-1 border-none ${m.efficiency >= 80 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-indigo-500/10 text-indigo-600'}`}>
+                            {m.efficiency}%
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </Card>
-          )}
 
-          {/* Empty State Mock */}
-          {isProjectMode && !selectedProject && (
-            <div className="h-[400px] flex flex-col items-center justify-center text-center space-y-4">
-               <div className="h-20 w-20 rounded-full bg-secondary/30 flex items-center justify-center">
-                  <Search className="h-10 w-10 text-muted-foreground" />
-               </div>
-               <div>
-                  <h3 className="text-xl font-bold">No project data available</h3>
-                  <p className="text-muted-foreground">We couldn't find any performance records for the selected project.</p>
-               </div>
-               <Button onClick={handleClearFilter}>Back to Global Analytics</Button>
-            </div>
-          )}
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
 }

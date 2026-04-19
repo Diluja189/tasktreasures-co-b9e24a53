@@ -17,9 +17,9 @@ interface RoleContextType {
 }
 
 const mockUsers: Record<UserRole, User> = {
-  admin: { id: "1", name: "Alex Richardson", email: "alex@company.com", role: "admin", department: "Executive" },
-  manager: { id: "2", name: "Sarah Chen", email: "sarah@company.com", role: "manager", department: "Engineering" },
-  user: { id: "3", name: "James Wilson", email: "james@company.com", role: "user", department: "Engineering" },
+  admin: { id: "1", name: "Administrator", email: "admin@company.com", role: "admin", department: "Executive" },
+  manager: { id: "2", name: "Dept Manager", email: "manager@company.com", role: "manager", department: "Engineering" },
+  user: { id: "3", name: "Standard User", email: "user@company.com", role: "user", department: "Engineering" },
 };
 
 const RoleContext = createContext<RoleContextType | undefined>(undefined);

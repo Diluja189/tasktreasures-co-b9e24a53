@@ -14,24 +14,14 @@ import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const assignedTasks = [
-  { id: "T1", name: "AWS S3 Bucket Config", project: "Cloud Migration", priority: "High", currentStatus: "In Progress", deadline: "2026-04-18" },
-  { id: "T2", name: "OAuth2 Provider Integration", project: "Security Infrastructure", priority: "High", currentStatus: "Not Started", deadline: "2026-04-20" },
-  { id: "T3", name: "Chart.js Theme Registry", project: "SaaS Dashboard", priority: "Medium", currentStatus: "In Progress", deadline: "2026-04-25" },
-  { id: "T4", name: "API Docs v3", project: "Cloud Migration", priority: "Low", currentStatus: "Delayed", deadline: "2026-04-12" },
-];
+const assignedTasks = [];
+const recentUpdates = [];
 
 const statusOptions = [
   { value: "Not Started", label: "Not Started", color: "bg-slate-400/10 text-slate-500", icon: Clock },
   { value: "In Progress", label: "In Progress", color: "bg-indigo-500/10 text-indigo-600", icon: SlidersHorizontal },
   { value: "Completed", label: "Completed", color: "bg-emerald-500/10 text-emerald-600", icon: CheckCircle2 },
   { value: "Delayed", label: "Delayed", color: "bg-rose-500/10 text-rose-600", icon: AlertTriangle },
-];
-
-const recentUpdates = [
-  { task: "DB Indexing Audit", status: "Completed", updatedAt: "Today, 11:30 AM", note: "All indexes reviewed and optimized successfully." },
-  { task: "Chart.js Theme Registry", status: "In Progress", updatedAt: "Today, 09:15 AM", note: "Theme config module 60% done." },
-  { task: "API Docs v3", status: "Delayed", updatedAt: "Yesterday", note: "Blocked on new endpoint specs from backend team." },
 ];
 
 type StatusKey = "Not Started" | "In Progress" | "Completed" | "Delayed";
