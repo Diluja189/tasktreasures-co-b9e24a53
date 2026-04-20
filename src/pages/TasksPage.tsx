@@ -37,6 +37,7 @@ export default function TasksPage() {
   const [managerFilter, setManagerFilter] = useState("All");
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTaskCreateOpen, setIsTaskCreateOpen] = useState(false);
   const [forceRender, setForceRender] = useState(0);
 
   useEffect(() => {
@@ -101,9 +102,9 @@ export default function TasksPage() {
   const filtered = processedTasks.filter(t => {
     const rawSearch = searchQuery.toLowerCase();
     const matchesSearch = 
-        t.name?.toLowerCase().includes(rawSearch) || 
-        t.assignee?.toLowerCase().includes(rawSearch) ||
-        t.manager?.toLowerCase().includes(rawSearch);
+        (t.name || '').toLowerCase().includes(rawSearch) || 
+        (t.assignee || '').toLowerCase().includes(rawSearch) ||
+        (t.manager || '').toLowerCase().includes(rawSearch);
     
     const matchesStatus = statusFilter === "All" || t.dynamicStatus === statusFilter;
     const matchesManager = managerFilter === "All" || t.manager === managerFilter;
@@ -147,6 +148,29 @@ export default function TasksPage() {
     return 'bg-slate-400 text-white'; // Not Started
   };
 
+  const handleAdminCreateTask = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const newTask = {
+      id: `TSK-${Math.floor(100+Math.random()*900)}`,
+      name: fd.get("title")?.toString() || "",
+      project: fd.get("project")?.toString() || "General",
+      manager: fd.get("manager")?.toString() || "System Admin",
+      assignee: fd.get("assignee")?.toString() || "Unassigned",
+      priority: fd.get("priority")?.toString() || "Medium",
+      status: "Not Started",
+      progress: 0,
+      deadline: fd.get("deadline")?.toString() || "",
+      createdDate: new Date().toISOString().split('T')[0],
+      description: fd.get("desc")?.toString() || ""
+    };
+    const updated = [newTask, ...tasks];
+    setTasks(updated);
+    localStorage.setItem("app_tasks_persistence", JSON.stringify(updated));
+    toast.success("Task dynamically registered and populated to all managerial queues!");
+    setIsTaskCreateOpen(false);
+  };
+
   return (
     <div className="space-y-8 pb-10 pt-5">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -155,9 +179,14 @@ export default function TasksPage() {
              <Workflow className="h-6 w-6 text-indigo-600" /> Task Overview
            </h1>
         </div>
-        <Button variant="outline" size="sm" className="h-8 rounded-xl font-bold text-[10px] gap-2 border-none bg-secondary/20 hover:bg-secondary/30 text-foreground" onClick={refreshRegistry}>
-           <RefreshCw className="h-4 w-4" /> Refresh
-        </Button>
+        <div className="flex items-center gap-3">
+           <Button variant="outline" size="sm" className="h-8 rounded-xl font-bold text-[10px] gap-2 border-none bg-secondary/20 hover:bg-secondary/30 text-foreground" onClick={refreshRegistry}>
+              <RefreshCw className="h-4 w-4" /> Refresh
+           </Button>
+           <Button size="sm" className="h-8 rounded-xl font-bold text-[10px] gap-2 border-none bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-600/20" onClick={() => setIsTaskCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> New Task
+           </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white dark:bg-slate-900 overflow-hidden p-3 rounded-2xl border shadow-sm">
@@ -388,6 +417,55 @@ export default function TasksPage() {
                </div>
              </>
            )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin Task Creation Modal */}
+      <Dialog open={isTaskCreateOpen} onOpenChange={setIsTaskCreateOpen}>
+        <DialogContent className="sm:max-w-[480px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden bg-white">
+           <DialogHeader className="bg-slate-900 p-6 text-white pb-6 text-left">
+              <DialogTitle className="text-xl font-black tracking-tighter italic">Create Global Task</DialogTitle>
+           </DialogHeader>
+           <form onSubmit={handleAdminCreateTask} className="p-6 space-y-4 text-left">
+              <div className="space-y-1">
+                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Task Title</label>
+                 <Input name="title" required className="h-10 rounded-xl bg-slate-50 border-slate-100 font-bold" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Project</label>
+                    <Input name="project" defaultValue="General" className="h-10 rounded-xl bg-slate-50 border-slate-100 font-bold" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Priority</label>
+                    <Select name="priority" defaultValue="Medium">
+                       <SelectTrigger className="h-10 rounded-xl bg-slate-50 border-slate-100 font-bold"><SelectValue /></SelectTrigger>
+                       <SelectContent className="rounded-xl border-none shadow-2xl">
+                          <SelectItem value="High">High</SelectItem>
+                          <SelectItem value="Medium">Medium</SelectItem>
+                          <SelectItem value="Low">Low</SelectItem>
+                       </SelectContent>
+                    </Select>
+                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Assignor (Manager)</label>
+                    <Input name="manager" defaultValue="System Admin" className="h-10 rounded-xl bg-slate-50 border-slate-100 font-bold" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Assignee</label>
+                    <Input name="assignee" placeholder="e.g. Designer Team" required className="h-10 rounded-xl bg-slate-50 border-slate-100 font-bold" />
+                 </div>
+              </div>
+              <div className="space-y-1">
+                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Deadline</label>
+                 <Input type="date" name="deadline" required className="h-10 rounded-xl bg-slate-50 border-slate-100 font-bold" />
+              </div>
+              <div className="pt-2">
+                 <Button type="submit" className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black uppercase tracking-widest transition-all">Submit Task</Button>
+              </div>
+           </form>
         </DialogContent>
       </Dialog>
     </div>

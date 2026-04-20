@@ -54,6 +54,21 @@ export default function SetPasswordPage() {
 
     // Simulate API call
     setTimeout(() => {
+      // Find and activate member if token is an invitation token
+      if (token && token.startsWith("INV-")) {
+        const memberId = token.replace("INV-", "");
+        const savedMembers = localStorage.getItem("app_team_members_persistence");
+        if (savedMembers) {
+          const members = JSON.parse(savedMembers);
+          const updated = members.map((m: any) => 
+            m.id === memberId ? { ...m, status: "Active" } : m
+          );
+          localStorage.setItem("app_team_members_persistence", JSON.stringify(updated));
+          // Dispatch storage event to notify other tabs/components
+          window.dispatchEvent(new Event("storage"));
+        }
+      }
+
       setIsLoading(false);
       setIsSuccess(true);
       toast.success("Account activated! Password set successfully.");

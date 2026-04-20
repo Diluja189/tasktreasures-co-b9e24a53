@@ -2,18 +2,22 @@ import { useState } from "react";
 import {
   Search, Play, CheckCircle2, Clock,
   ChevronRight, Target, Calendar, Timer, Eye,
-  AlertCircle, MoreVertical
+  AlertCircle, MoreVertical, FileText, Download
 } from "lucide-react";
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { 
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle 
+} from "@/components/ui/dialog";
 
 const myTasks = [];
 
@@ -34,6 +38,20 @@ export default function MemberTasksPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const navigate = useNavigate();
+
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [selectedProjectForDocs, setSelectedProjectForDocs] = useState<string | null>(null);
+  const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
+
+  useEffect(() => {
+    const savedDocs = JSON.parse(localStorage.getItem("app_documents_persistence") || "[]");
+    setDocuments(savedDocs);
+  }, [isDocsModalOpen]);
+
+  const handleOpenDocs = (projectName: string) => {
+    setSelectedProjectForDocs(projectName);
+    setIsDocsModalOpen(true);
+  };
 
   const filtered = myTasks.filter(t =>
     (statusFilter === "All" || t.status === statusFilter) &&
@@ -150,6 +168,10 @@ export default function MemberTasksPage() {
                         <DropdownMenuItem className="rounded-xl gap-2 py-2 text-xs font-bold cursor-pointer text-emerald-600" onClick={() => handleStatusUpdate(task.name, "Completed")}>
                           <CheckCircle2 className="h-3.5 w-3.5" /> Mark Complete
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator className="my-1 opacity-50" />
+                        <DropdownMenuItem className="rounded-xl gap-2 py-2 text-xs font-bold cursor-pointer text-indigo-600 focus:bg-indigo-50" onClick={() => handleOpenDocs(task.project)}>
+                          <FileText className="h-3.5 w-3.5" /> Project Documents
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -168,6 +190,56 @@ export default function MemberTasksPage() {
           </div>
         )}
       </div>
+
+      {/* Project Documents Modal for Team Members */}
+      <Dialog open={isDocsModalOpen} onOpenChange={setIsDocsModalOpen}>
+        <DialogContent className="sm:max-w-[500px] rounded-[2rem] p-0 border-none shadow-2xl overflow-hidden bg-white">
+          <DialogHeader className="p-8 bg-indigo-600 text-white relative">
+            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+              <FileText size={120} />
+            </div>
+            <DialogTitle className="text-xl font-bold flex items-center gap-3"><FileText className="h-5 w-5" /> Project Repository</DialogTitle>
+            <DialogDescription className="text-indigo-100/70 font-medium mt-1">Viewing all tactical assets for {selectedProjectForDocs}.</DialogDescription>
+          </DialogHeader>
+          <div className="p-8 space-y-4">
+             <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                {documents.filter(d => d.projectId === selectedProjectForDocs || d.projectName === selectedProjectForDocs).length === 0 ? (
+                  <div className="py-12 text-center space-y-4">
+                     <div className="h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto border border-slate-100">
+                        <FileText className="h-8 w-8 text-slate-300" />
+                     </div>
+                     <p className="text-sm font-bold text-slate-400">No documents found for this project stream.</p>
+                  </div>
+                ) : (
+                  documents.filter(d => d.projectId === selectedProjectForDocs || d.projectName === selectedProjectForDocs).map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:border-indigo-200 transition-all group">
+                       <div className="flex items-center gap-4">
+                          <div className="h-10 w-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                             <FileText className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs text-slate-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight italic line-clamp-1">{doc.name}</p>
+                            <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-tighter">{doc.uploadedBy} • {doc.uploadDate}</p>
+                          </div>
+                       </div>
+                       <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 shrink-0" onClick={() => {
+                          toast.info(`Retrieving binary stream: ${doc.fileName}...`);
+                          setTimeout(() => toast.success(`Acquisition of ${doc.fileName} complete.`), 1000);
+                       }}>
+                          <Download className="h-5 w-5" />
+                       </Button>
+                    </div>
+                  ))
+                )}
+             </div>
+          </div>
+          <div className="p-6 bg-slate-50 flex justify-end">
+             <Button variant="ghost" className="h-10 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500 hover:bg-slate-200" onClick={() => setIsDocsModalOpen(false)}>
+                Close Vault
+             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

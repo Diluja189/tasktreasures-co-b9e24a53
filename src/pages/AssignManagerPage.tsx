@@ -48,6 +48,7 @@ export default function AssignManagerPage() {
   const [isModalOpen, setIsModalOpen]             = useState(false);
   const [isConfirming, setIsConfirming]           = useState(false);
   const [lastAssignedId, setLastAssignedId]       = useState<string | null>(null);
+  const [assignmentFiles, setAssignmentFiles]     = useState<string[]>([]);
 
   // ── Load projects & managers from shared localStorage ───────────────────
   const loadData = () => {
@@ -105,6 +106,7 @@ export default function AssignManagerPage() {
   const openModal = (project: any) => {
     setSelectedProject(project);
     setSelectedManagerName(project.manager ?? "");
+    setAssignmentFiles(project.assignmentFiles ?? []);
     setLastAssignedId(null);
     setIsModalOpen(true);
   };
@@ -119,7 +121,7 @@ export default function AssignManagerPage() {
     setIsConfirming(true);
     setTimeout(() => {
       const updated = projects.map(p =>
-        p.id === selectedProject.id ? { ...p, manager: selectedManagerName } : p
+        p.id === selectedProject.id ? { ...p, manager: selectedManagerName, assignmentFiles } : p
       );
       localStorage.setItem("app_projects_persistence", JSON.stringify(updated));
       setProjects(updated);
@@ -127,7 +129,8 @@ export default function AssignManagerPage() {
       setIsModalOpen(false);
       setIsConfirming(false);
       setSelectedManagerName("");
-      toast.success(`Manager assigned successfully — "${selectedProject.name}" → ${selectedManagerName}`);
+      setAssignmentFiles([]);
+      toast.success(`Manager assigned successfully with ${assignmentFiles.length} briefing assets.`);
     }, 500);
   };
 
@@ -274,6 +277,15 @@ export default function AssignManagerPage() {
                                   <span className={`text-[8px] font-black uppercase ${mgr.workload.color}`}>
                                     · {mgr.workload.label}
                                   </span>
+                                )}
+                                {project.assignmentFiles && project.assignmentFiles.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {project.assignmentFiles.map((f: string, idx: number) => (
+                                      <Badge key={idx} className="bg-indigo-50 text-indigo-600 border-none text-[7px] font-black h-3.5 px-1.5 flex items-center gap-1 group/file">
+                                        <Briefcase className="h-2.5 w-2.5" /> {f}
+                                      </Badge>
+                                    ))}
+                                  </div>
                                 )}
                               </>
                             ) : (
@@ -499,10 +511,49 @@ export default function AssignManagerPage() {
               )}
             </AnimatePresence>
 
+            <div className="space-y-2">
+               <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60 flex justify-between items-center pr-1">
+                 Tactical Assets (Workflow / PDF / Image)
+                 <Badge variant="outline" className="text-[7px] px-1 py-0 h-3 h-px-1.5 border-none font-black bg-indigo-50 text-indigo-600">Max 5</Badge>
+               </p>
+               
+               <div className="border-2 border-dashed border-border/60 rounded-2xl p-4 flex flex-col items-center justify-center bg-secondary/5 hover:bg-secondary/10 transition-colors group">
+                  <input 
+                    type="file" 
+                    id="file-upload" 
+                    multiple 
+                    className="hidden" 
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      setAssignmentFiles(prev => [...prev, ...files.map(f => f.name)]);
+                    }}
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center">
+                    <div className="h-9 w-9 rounded-full bg-white shadow-sm border border-border flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                       <ArrowUpRight className="h-4 w-4 text-indigo-600 rotate-45" />
+                    </div>
+                    <p className="text-[10px] font-black text-indigo-900 group-hover:text-indigo-600">Select Briefing Assets</p>
+                  </label>
+               </div>
+
+               {assignmentFiles.length > 0 && (
+                 <div className="flex flex-wrap gap-1.5 mt-2">
+                    {assignmentFiles.map((f, idx) => (
+                      <Badge key={idx} variant="outline" className="h-6 gap-2 rounded-lg bg-white border-border/40 pl-2 pr-1 font-bold text-[9px] group/item">
+                         <span className="truncate max-w-[120px]">{f}</span>
+                         <button onClick={() => setAssignmentFiles(prev => prev.filter((_, i) => i !== idx))} className="h-4 w-4 rounded-md hover:bg-rose-50 flex items-center justify-center text-muted-foreground hover:text-rose-600">
+                           <XCircle className="h-3 w-3" />
+                         </button>
+                      </Badge>
+                    ))}
+                 </div>
+               )}
+            </div>
+
             <div className="flex items-start gap-2 bg-indigo-500/5 border border-indigo-500/10 p-3 rounded-xl">
               <ShieldCheck className="h-3.5 w-3.5 text-indigo-600 mt-0.5 shrink-0" />
               <p className="text-[9px] text-indigo-700 dark:text-indigo-300 font-bold leading-tight">
-                This assignment will be logged in the system audit trail. The manager will be notified upon confirmation.
+                Assets will be securely anchored to this assignment. The manager will be notified of the new documentation.
               </p>
             </div>
           </div>

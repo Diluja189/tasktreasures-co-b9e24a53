@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { 
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 import { 
   Search, Filter,
   ArrowUpRight, Clock, Users, Calendar, 
   ChevronRight, LayoutGrid, List, MoreVertical,
   ShieldCheck, AlertCircle, Target, UserPlus, UserCog,
-  CheckCircle2, AlertTriangle
+  CheckCircle2, AlertTriangle, FileText as FileIcon,
+  Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -12,12 +18,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { 
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-
-const assignedProjectsData = [];
 
 const statusStyles = {
   "On-Time": "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
@@ -35,9 +35,25 @@ export default function ManagerProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
+  const [assignedProjectsData, setAssignedProjectsData] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadManagerProjects = () => {
+      const persisted = localStorage.getItem("app_projects_persistence");
+      if (persisted) {
+        // Only show projects that have an actually assigned manager to simulate "My Projects" scope
+        const allProjects = JSON.parse(persisted);
+        setAssignedProjectsData(allProjects.filter((p: any) => p.manager && p.manager.length > 0 && p.manager !== "Unassigned"));
+      }
+    };
+    loadManagerProjects();
+    window.addEventListener("storage", loadManagerProjects);
+    return () => window.removeEventListener("storage", loadManagerProjects);
+  }, []);
+
   const filtered = assignedProjectsData.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.description.toLowerCase().includes(searchQuery.toLowerCase())
+    (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -108,79 +124,70 @@ export default function ManagerProjectsPage() {
               </CardHeader>
 
               <CardContent className="space-y-6 flex-1 p-6 pt-0 flex flex-col">
-                 <div className="space-y-2">
-                    <div className="flex justify-between items-end">
-                       <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Progress</p>
-                       <p className="text-sm font-black text-purple-600 dark:text-purple-400">{project.progress}%</p>
+                  {/* Briefing Assets Section */}
+                  {project.assignmentFiles && project.assignmentFiles.length > 0 && (
+                    <div className="space-y-3 bg-indigo-50/30 dark:bg-indigo-500/5 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 shadow-inner">
+                       <p className="text-[10px] uppercase font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 tracking-widest">
+                          <ShieldCheck className="w-3.5 h-3.5" /> Admin Briefing Assets
+                       </p>
+                       <div className="flex flex-wrap gap-2">
+                          {project.assignmentFiles.map((file: string, idx: number) => (
+                             <div 
+                               key={idx} 
+                               onClick={() => {
+                                 toast.info(`Extracting tactical asset: ${file}`, {
+                                   description: "Preparing secure download link..."
+                                 });
+                                 setTimeout(() => toast.success(`${file} downloaded successfully to local storage.`), 1500);
+                               }}
+                               className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-secondary/40 rounded-xl border border-indigo-100/50 shadow-sm cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 dark:hover:bg-indigo-500/10 transition-all group group/file"
+                             >
+                                <FileIcon className="h-3 w-3 text-indigo-500 group-hover/file:scale-110 transition-transform" />
+                                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate max-w-[120px]">{file}</span>
+                                <Download className="h-2.5 w-2.5 text-slate-400 group-hover/file:text-indigo-600 ml-1 transition-colors" />
+                             </div>
+                          ))}
+                       </div>
                     </div>
-                    <Progress value={project.progress} className={`h-2.5 rounded-full overflow-hidden bg-slate-100 dark:bg-secondary ${project.status === 'Delayed' ? '[&>div]:bg-rose-500' : (project.progress > 80 ? '[&>div]:bg-emerald-500' : '[&>div]:bg-purple-600')}`} />
-                 </div>
+                  )}
 
-                 <div className="flex items-center gap-3">
-                   <div className="flex-1 bg-slate-50 dark:bg-secondary/30 rounded-xl p-3 flex items-center gap-3 border border-slate-100 dark:border-border/50">
-                      <Target className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                      <div>
-                         <p className="text-[10px] uppercase font-bold text-slate-500 dark:text-muted-foreground mb-0.5">Pending</p>
-                         <p className="text-xs font-black text-slate-900 dark:text-foreground leading-none">{project.pendingTasks} Tasks</p>
-                      </div>
-                   </div>
-                   {project.overdueTasks > 0 && (
-                      <div className="flex-1 bg-rose-50 dark:bg-rose-500/10 rounded-xl p-3 flex items-center gap-3 border border-rose-100 dark:border-rose-500/20">
-                         <AlertCircle className="w-4 h-4 text-rose-600" />
-                         <div>
-                            <p className="text-[10px] uppercase font-bold text-rose-600/70 mb-0.5">Overdue</p>
-                            <p className="text-xs font-black text-rose-600 leading-none">{project.overdueTasks} Tasks!</p>
-                         </div>
-                      </div>
-                   )}
-                 </div>
-
-                 <div className="space-y-1.5 bg-slate-50 dark:bg-secondary/20 p-3.5 rounded-xl border border-slate-100 dark:border-border/50">
-                    <div className="flex justify-between items-center mb-2">
-                      <p className="text-[10px] uppercase font-black text-slate-500 dark:text-muted-foreground flex items-center gap-1.5">
-                         <Users className="w-3.5 h-3.5 text-blue-500" /> Team Members
-                      </p>
-                      {project.assignedMembers < project.teamCapacity ? (
-                        <Badge variant="outline" className="text-[9px] uppercase tracking-wider font-bold bg-amber-50 rounded-md text-amber-700 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30">
-                          Understaffed
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[9px] uppercase tracking-wider font-bold bg-emerald-50 rounded-md text-emerald-700 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30">
-                          Fully Staffed
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between text-sm font-black text-slate-900 dark:text-foreground">
-                      <span>{project.assignedMembers} / {project.teamCapacity} Assigned</span>
-                    </div>
-                 </div>
-
-                 <div className="grid grid-cols-2 gap-4 mt-auto pt-2">
+                 <div className="grid grid-cols-2 gap-4 mt-auto pt-4 border-t border-slate-100 dark:border-border/40">
                     <div className="space-y-1">
-                       <p className="text-[10px] uppercase font-black text-slate-400 dark:text-muted-foreground/60 leading-none">Deadline</p>
-                       <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300"><Calendar className="h-3 w-3 text-purple-500/70" /> {project.deadline}</div>
+                       <p className="text-[10px] uppercase font-black text-slate-400 dark:text-muted-foreground/60 leading-none">Timeline</p>
+                       <div className="flex flex-col gap-1 mt-2">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                             <Calendar className="h-3 w-3 text-purple-500/70" /> 
+                             <span className="text-[9px] uppercase text-muted-foreground mr-1">Start:</span>
+                             {project.startDate || '2026-01-12'}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                             <Clock className="h-3 w-3 text-rose-500/70" />
+                             <span className="text-[9px] uppercase text-muted-foreground mr-1">End:</span>
+                             {project.deadline || '2026-07-23'}
+                          </div>
+                       </div>
                     </div>
-                    <div className="space-y-1">
-                       <p className="text-[10px] uppercase font-black text-slate-400 dark:text-muted-foreground/60 leading-none">Assigned By</p>
-                       <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300"><UserCog className="h-3 w-3 text-purple-500/70" /> {project.assignedBy}</div>
+                    <div className="space-y-1 text-right">
+                       <p className="text-[10px] uppercase font-black text-slate-400 dark:text-muted-foreground/60 leading-none">Authority Info</p>
+                       <div className="flex flex-col items-end gap-1 mt-2">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                             <span className="text-[9px] uppercase text-muted-foreground">Assigned By:</span>
+                             <Badge variant="outline" className="border-none bg-purple-50 text-purple-600 text-[10px] font-black h-5 px-2">
+                               {project.assignedBy || 'Super Admin'}
+                             </Badge>
+                          </div>
+                       </div>
                     </div>
                  </div>
               </CardContent>
 
               <CardFooter className="p-6 pt-0">
-                 {project.assignedMembers < project.teamCapacity ? (
+                 {project.assignedMembers < (project.teamCapacity || 5) && (
                     <Button 
                       className="w-full h-12 rounded-xl gap-2 bg-purple-600 hover:bg-purple-700 shadow-md shadow-purple-600/20 font-black uppercase text-xs tracking-widest transition-all active:scale-95"
                       onClick={() => navigate("/manager/assignments")}
                     >
                       <UserPlus className="h-4 w-4" /> Assign Team
-                    </Button>
-                 ) : (
-                    <Button 
-                      className="w-full h-12 rounded-xl gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 shadow-md font-black uppercase text-xs tracking-widest transition-all active:scale-95 text-white"
-                      onClick={() => navigate("/manager/tasks")}
-                    >
-                      Manage Project <ArrowUpRight className="h-4 w-4" />
                     </Button>
                  )}
               </CardFooter>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { 
   Plus, Search, Filter, RefreshCw, 
   CheckCircle2, Clock, Calendar, User,
@@ -24,7 +24,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const tasksData = [];
+
 
 const priorityStyles = {
   "High": "bg-rose-500/10 text-rose-600 border-none",
@@ -47,6 +47,18 @@ export default function ManagerTasksPage() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
   const [assigneeFilter, setAssigneeFilter] = useState("All");
+  const [tasksData, setTasksData] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadManagerTasks = () => {
+      const persisted = localStorage.getItem("app_tasks_persistence");
+      setTasksData(persisted ? JSON.parse(persisted) : []);
+    };
+    loadManagerTasks();
+    window.addEventListener("storage", loadManagerTasks);
+    return () => window.removeEventListener("storage", loadManagerTasks);
+  }, []);
+
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
@@ -54,11 +66,11 @@ export default function ManagerTasksPage() {
   const filteredTasks = useMemo(() => tasksData.filter(t => 
     (projectFilter === "All" || t.project === projectFilter) &&
     (statusFilter === "All" || t.status === statusFilter) &&
-    (priorityFilter === "All" || t.priority === priorityFilter) &&
+    (priorityFilter === "All" || (t.priority || 'Medium') === priorityFilter) &&
     (assigneeFilter === "All" || t.assignee === assigneeFilter) &&
-    (t.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-     t.assignee.toLowerCase().includes(searchQuery.toLowerCase()))
-  ), [searchQuery, projectFilter, statusFilter, priorityFilter, assigneeFilter]);
+    ((t.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+     (t.assignee || '').toLowerCase().includes(searchQuery.toLowerCase()))
+  ), [tasksData, searchQuery, projectFilter, statusFilter, priorityFilter, assigneeFilter]);
 
   const isOverdue = (deadline: string, status: string) => status !== "Completed" && new Date(deadline) < TODAY;
 
@@ -69,11 +81,11 @@ export default function ManagerTasksPage() {
   const unassignedCount = tasksData.filter(t => t.assignee === "Unassigned").length;
 
   const workload = useMemo(() => tasksData.reduce((acc, t) => {
-    if (t.assignee !== "Unassigned" && t.status !== "Completed") {
+    if (t.assignee && t.assignee !== "Unassigned" && t.status !== "Completed") {
       acc[t.assignee] = (acc[t.assignee] || 0) + 1;
     }
     return acc;
-  }, {} as Record<string, number>), []);
+  }, {} as Record<string, number>), [tasksData]);
 
   const toggleSelectAll = () => {
     if (selectedTasks.length === filteredTasks.length) setSelectedTasks([]);
@@ -84,9 +96,26 @@ export default function ManagerTasksPage() {
     setSelectedTasks(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
   };
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    toast.success("Task created and synchronized with project roadmap.");
+    const fd = new FormData(e.currentTarget);
+    const newTask = {
+      id: `TSK-${Math.floor(100+Math.random()*900)}`,
+      name: fd.get("title")?.toString() || "",
+      project: "General",
+      manager: "Manager",
+      assignee: fd.get("assignee")?.toString() || "Unassigned",
+      priority: fd.get("priority")?.toString() || "Medium",
+      status: "Not Started",
+      progress: 0,
+      deadline: fd.get("deadline")?.toString() || "",
+    };
+    const updated = [newTask, ...tasksData];
+    setTasksData(updated);
+    localStorage.setItem("app_tasks_persistence", JSON.stringify(updated));
+    // Trigger storage event manually to sync other tabs instantly within the same window
+    window.dispatchEvent(new Event("storage"));
+    toast.success("Task globally synchronized to ledger.");
     setIsTaskModalOpen(false);
   };
 

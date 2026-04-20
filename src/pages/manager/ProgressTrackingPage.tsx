@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Filter, Search, RefreshCw, 
   AlertTriangle, CheckCircle2, 
@@ -18,8 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const trackingItems = [];
-const projectHighlights = [];
+
 
 const statusStyles = {
   "Completed": "bg-emerald-500/10 text-emerald-600 border-none",
@@ -33,12 +32,38 @@ export default function ProgressTrackingPage() {
   const [projectFilter, setProjectFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [trackingItems, setTrackingItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadTrackingTasks = () => {
+      const persisted = localStorage.getItem("app_tasks_persistence");
+      setTrackingItems(persisted ? JSON.parse(persisted) : []);
+    };
+    loadTrackingTasks();
+    window.addEventListener("storage", loadTrackingTasks);
+    return () => window.removeEventListener("storage", loadTrackingTasks);
+  }, []);
+
   const kanbanColumns = ["Not Started", "In Progress", "Completed", "Delayed"];
+
+  // Helper aggregate function just for UI layout
+  const projectHighlights = Array.from(new Set(trackingItems.map(t => t.project))).map(projName => {
+    const projTasks = trackingItems.filter(t => t.project === projName);
+    const comps = projTasks.filter(t => t.status === "Completed").length;
+    const dels = projTasks.filter(t => t.status === "Delayed" || t.status === "Overdue").length;
+    return {
+      name: projName,
+      total: projTasks.length,
+      completed: comps,
+      delayed: dels,
+      health: projTasks.length > 0 ? Math.round((comps / projTasks.length) * 100) : 0
+    };
+  });
 
   const filteredItems = trackingItems.filter(item => {
     const matchesProject = projectFilter === "All" || item.project === projectFilter;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          item.assignee.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (item.assignee || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesProject && matchesSearch;
   });
 

@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { FileText, Download, Upload } from "lucide-react";
 
 const initialProjects = [];
 
@@ -135,9 +136,37 @@ export default function ProjectsPage() {
      (p.id || "").toLowerCase().includes((searchQuery || "").toLowerCase()))
   );
 
+  const [documents, setDocuments] = useState<any[]>([]);
+
+  useEffect(() => {
+    const savedDocs = JSON.parse(localStorage.getItem("app_documents_persistence") || "[]");
+    setDocuments(savedDocs);
+  }, [isViewingOpen]);
+
   const handleViewDetails = (project: any) => {
     setViewingProject(project);
     setIsViewingOpen(true);
+  };
+
+  const handleUploadDoc = (e: React.ChangeEvent<HTMLInputElement>, projectId: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const newDoc = {
+      id: `DOC-${Math.floor(1000 + Math.random() * 9000)}`,
+      projectId: projectId,
+      name: file.name,
+      fileName: file.name,
+      uploadedBy: "Admin",
+      uploaderName: "Super Admin",
+      uploadDate: new Date().toISOString().split('T')[0],
+      size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+    };
+
+    const updatedDocs = [newDoc, ...JSON.parse(localStorage.getItem("app_documents_persistence") || "[]")];
+    localStorage.setItem("app_documents_persistence", JSON.stringify(updatedDocs));
+    setDocuments(updatedDocs);
+    toast.success("Document uploaded successfully");
   };
 
   return (
@@ -164,7 +193,7 @@ export default function ProjectsPage() {
                  <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-none shadow-2xl p-1">
-                 <SelectItem value="All" className="text-[10px] font-bold">All Monitor</SelectItem>
+                 <SelectItem value="All" className="text-[10px] font-bold">All Status</SelectItem>
                  <SelectItem value="Active" className="text-[10px] font-bold">Active</SelectItem>
                  <SelectItem value="Delayed" className="text-[10px] font-bold">Delayed</SelectItem>
                  <SelectItem value="Completed" className="text-[10px] font-bold">Completed</SelectItem>
@@ -176,14 +205,15 @@ export default function ProjectsPage() {
            </Button>
            
            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-              <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 rounded-xl h-8 text-[10px] font-black uppercase tracking-widest border-none" 
-                onClick={() => { 
-                  setEditingProject(null); 
-                  resetForm(); 
-                  setIsCreateOpen(true);
-                }}>
-                <Plus className="h-3.5 w-3.5" /> Create
-              </Button>
+              <DialogTrigger asChild>
+                <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 rounded-xl h-8 text-[10px] font-black uppercase tracking-widest border-none" 
+                  onClick={() => { 
+                    setEditingProject(null); 
+                    resetForm(); 
+                  }}>
+                  <Plus className="h-3.5 w-3.5" /> Create
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto rounded-xl border border-border/50 shadow-2xl p-0 gap-0 bg-white dark:bg-slate-950">
               <DialogHeader className="bg-emerald-600 p-3 text-white text-left">
                 <DialogTitle className="text-base font-black">{editingProject ? "Edit Project" : "New Project"}</DialogTitle>
@@ -335,6 +365,41 @@ export default function ProjectsPage() {
                              <span className="text-[10px] font-black text-foreground leading-none">{viewingProject.progress}%</span>
                           </div>
                           <Progress value={viewingProject.progress} className="h-1 rounded-full bg-secondary/20" />
+                       </div>
+
+                       {/* Project Documents Section */}
+                       <div className="space-y-2 pt-4 border-t border-border/5">
+                          <div className="flex items-center justify-between">
+                             <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">Project Documents</p>
+                             <label className="cursor-pointer">
+                                <input type="file" className="hidden" onChange={(e) => handleUploadDoc(e, viewingProject.id)} />
+                                <Badge className="bg-indigo-600 hover:bg-indigo-700 text-[7px] font-black uppercase px-1.5 py-0 h-4 border-none cursor-pointer">
+                                   <Plus className="h-2 w-2 mr-1" /> Upload
+                                </Badge>
+                             </label>
+                          </div>
+                          <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
+                             {documents.filter(d => d.projectId === viewingProject.id).length === 0 ? (
+                                <p className="text-[9px] font-bold text-muted-foreground/40 italic py-2">No documents uploaded yet</p>
+                             ) : (
+                                documents.filter(d => d.projectId === viewingProject.id).map((doc) => (
+                                   <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-secondary/5 border border-border/5 group">
+                                      <div className="flex items-center gap-2">
+                                         <FileText className="h-3 w-3 text-indigo-500" />
+                                         <div className="min-w-0">
+                                            <p className="text-[9px] font-bold truncate max-w-[120px]">{doc.name}</p>
+                                            <p className="text-[7px] font-medium text-muted-foreground/60">{doc.uploadedBy} • {doc.uploadDate}</p>
+                                         </div>
+                                      </div>
+                                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                         <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md hover:bg-indigo-100" onClick={() => toast.info(`Downloading ${doc.fileName}...`)}>
+                                            <Download className="h-2.5 w-2.5 text-indigo-600" />
+                                         </Button>
+                                      </div>
+                                   </div>
+                                ))
+                             )}
+                          </div>
                        </div>
                     </div>
 
