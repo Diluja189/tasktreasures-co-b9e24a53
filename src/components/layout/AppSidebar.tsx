@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   LayoutDashboard, FolderKanban, CheckSquare, Users, Shield,
   BarChart3, Clock, FileText, Settings, ChevronDown, LogOut,
@@ -33,7 +34,6 @@ const navByRole: Record<UserRole, { label: string; items: { title: string; url: 
       label: "Intelligence & Compliance", items: [
         { title: "Reports & Analytics", url: "/reports", icon: BarChart3 },
         { title: "Notifications", url: "/notifications", icon: Bell },
-        { title: "Audit Logs", url: "/audit-logs", icon: FileText },
         { title: "Settings", url: "/settings", icon: Settings },
       ]
     },
@@ -47,7 +47,6 @@ const navByRole: Record<UserRole, { label: string; items: { title: string; url: 
         { title: "Team Assignment", url: "/manager/assignments", icon: UserPlus },
         { title: "Progress Tracking", url: "/manager/tracking", icon: Kanban },
         { title: "Status Reports", url: "/manager/reports", icon: FileText },
-        { title: "Audit Logs", url: "/audit-logs", icon: History },
       ]
     },
   ],
@@ -76,7 +75,18 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const collapsed = state === "collapsed";
-  const groups = navByRole[currentUser.role];
+  
+  const displayRole = useMemo((): UserRole => {
+    // Admin role is persistent; we only show other views if the user is NOT an admin
+    // or if they've explicitly switched their current role via the setRole switcher.
+    if (currentUser.role === 'admin') return 'admin';
+    
+    if (location.pathname.startsWith("/manager")) return "manager";
+    if (location.pathname.startsWith("/member")) return "user";
+    return currentUser.role;
+  }, [location.pathname, currentUser.role]);
+
+  const groups = navByRole[displayRole];
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">

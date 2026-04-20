@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -14,7 +15,6 @@ import UsersPage from "@/pages/UsersPage";
 import DepartmentsPage from "@/pages/DepartmentsPage";
 import RolesPage from "@/pages/RolesPage";
 import ReportsPage from "@/pages/ReportsPage";
-import AuditLogsPage from "@/pages/AuditLogsPage";
 import SettingsPage from "@/pages/SettingsPage";
 import TeamPage from "@/pages/TeamPage";
 import TimelinePage from "@/pages/TimelinePage";
@@ -52,6 +52,43 @@ import NotFound from "@/pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => {
+  // Global Deep Clean for Legacy Dummy Data
+  useEffect(() => {
+    const cleanDummyData = () => {
+      const taskLedger = localStorage.getItem("app_tasks_persistence");
+      if (taskLedger) {
+        try {
+          const tasks = JSON.parse(taskLedger);
+          const dummyNames = [
+            "Build Authentication Logic", 
+            "Create Database Schema", 
+            "Setup Server Infrastructure", 
+            "Critical System Patch", 
+            "UI Components Library"
+          ];
+          const cleaned = tasks.filter((t: any) => !dummyNames.includes(t.name));
+          if (cleaned.length !== tasks.length) {
+            localStorage.setItem("app_tasks_persistence", JSON.stringify(cleaned));
+            window.dispatchEvent(new Event("storage"));
+          }
+        } catch(e) {}
+      }
+      
+      const memberLedger = localStorage.getItem("app_users_persistence");
+      if (memberLedger) {
+        try {
+          const members = JSON.parse(memberLedger);
+          const cleanedMembers = members.filter((m: any) => m.name !== "Alex Johnson");
+          if (cleanedMembers.length !== members.length) {
+            localStorage.setItem("app_users_persistence", JSON.stringify(cleanedMembers));
+            window.dispatchEvent(new Event("storage"));
+          }
+        } catch(e) {}
+      }
+    };
+    cleanDummyData();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -91,7 +128,6 @@ const App = () => {
                 <Route path="/departments" element={<DepartmentsPage />} />
                 <Route path="/roles" element={<RolesPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
-                <Route path="/audit-logs" element={<AuditLogsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/team" element={<TeamPage />} />
                 <Route path="/timeline" element={<TimelinePage />} />

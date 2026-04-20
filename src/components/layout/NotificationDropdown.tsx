@@ -146,7 +146,7 @@ export function NotificationDropdown() {
           <Button 
             variant="outline" 
             className="w-full h-9 rounded-xl text-[10px] font-bold uppercase tracking-widest text-slate-600 border-border/60 hover:bg-slate-50"
-            onClick={() => navigate('/manager/notifications')}
+            onClick={() => navigate('/notifications')}
           >
             View all notifications
           </Button>

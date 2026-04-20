@@ -69,29 +69,9 @@ export default function TeamAssignmentPage() {
   useEffect(() => {
     const loadData = () => {
       const savedMembers = localStorage.getItem("app_users_persistence");
+      setMembers(savedMembers ? JSON.parse(savedMembers) : []);
+      
       const savedProjects = localStorage.getItem("app_projects_persistence");
-      
-      if (savedMembers) {
-        setMembers(JSON.parse(savedMembers));
-      } else {
-        // Initial setup if empty
-        const dummy: TeamMember[] = [
-          { 
-            id: "TM-1023", 
-            name: "Alex Johnson", 
-            personalEmail: "alex.j@personal.com", 
-            workEmail: "alex@company.com",
-            role: "Frontend Developer", 
-            status: "Active", 
-            managerId: currentUser.id, 
-            assignedProjectId: "PRJ-9139",
-            projects: ["PRJ-9139"] 
-          }
-        ];
-        localStorage.setItem("app_users_persistence", JSON.stringify(dummy));
-        setMembers(dummy);
-      }
-      
       const parsedProjects = savedProjects ? JSON.parse(savedProjects) : [];
       setAllProjects(parsedProjects);
     };
@@ -225,61 +205,61 @@ export default function TeamAssignmentPage() {
                 <Plus className="h-4 w-4" /> Add Team Member
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[480px] rounded-3xl border-none shadow-2xl p-0 overflow-hidden bg-white">
-              <DialogHeader className="bg-indigo-600 p-8 text-white text-left">
-                <DialogTitle className="text-xl font-black tracking-tight">Add Team Member</DialogTitle>
-                <DialogDescription className="text-indigo-100/70">Add and assign a team member to a project.</DialogDescription>
+            <DialogContent className="sm:max-w-[460px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden bg-white">
+              <DialogHeader className="bg-indigo-600 p-5 text-white text-left">
+                <DialogTitle className="text-lg font-black tracking-tight">Add Team Member</DialogTitle>
+                <DialogDescription className="text-indigo-100/70 text-xs mt-0.5">Register and assign a new member.</DialogDescription>
               </DialogHeader>
               
-              <form onSubmit={handleCreateAndAssign} className="p-8 space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5 col-span-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Member ID</Label>
+              <form onSubmit={handleCreateAndAssign} className="p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 ml-0.5">Member ID</Label>
                     <Input 
                       disabled
                       value={formData.memberId}
-                      className="rounded-xl border-none bg-secondary/20 h-11 font-mono font-bold pl-4 text-indigo-700"
+                      className="rounded-lg border-none bg-secondary/15 h-8 font-mono font-bold pl-3 text-indigo-700/70 text-xs"
                     />
                   </div>
 
-                  <div className="space-y-1.5 col-span-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Member Name <span className="text-rose-500">*</span></Label>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Member Name <span className="text-rose-500">*</span></Label>
                     <Input 
                       placeholder="e.g. John Doe" 
-                      className="rounded-xl border-border/50 bg-secondary/10 h-11 font-medium"
+                      className="rounded-xl border-border/40 bg-secondary/10 h-9 font-medium text-sm"
                       value={formData.name}
                       onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
                       required
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Personal Email <span className="text-rose-500">*</span></Label>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Personal Email <span className="text-rose-500">*</span></Label>
                     <Input 
                       type="email"
                       placeholder="john.d@email.com" 
-                      className="rounded-xl border-border/50 bg-secondary/10 h-11 font-medium pl-4"
+                      className="rounded-xl border-border/40 bg-secondary/10 h-9 font-medium pl-3 text-sm"
                       value={formData.personalEmail}
                       onChange={e => setFormData(prev => ({ ...prev, personalEmail: e.target.value }))}
                       required
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Work Email</Label>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Work Email</Label>
                     <Input 
                       type="email"
                       placeholder="j.doe@company.com" 
-                      className="rounded-xl border-border/50 bg-secondary/10 h-11 font-medium pl-4"
+                      className="rounded-xl border-border/40 bg-secondary/10 h-9 font-medium pl-3 text-sm"
                       value={formData.workEmail}
                       onChange={e => setFormData(prev => ({ ...prev, workEmail: e.target.value }))}
                     />
                   </div>
 
-                  <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Project <span className="text-rose-500">*</span></Label>
+                  <div className="space-y-1 col-span-2 sm:col-span-1">
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Project <span className="text-rose-500">*</span></Label>
                     <Select value={formData.projectId} onValueChange={v => setFormData(prev => ({ ...prev, projectId: v }))}>
-                      <SelectTrigger className="rounded-xl border-border/50 bg-secondary/10 h-11 font-medium">
+                      <SelectTrigger className="rounded-xl border-border/40 bg-secondary/10 h-9 font-medium text-sm">
                         <SelectValue placeholder="Select project" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-none shadow-2xl max-h-[300px]">
@@ -299,54 +279,14 @@ export default function TeamAssignmentPage() {
                     </Select>
                   </div>
 
-                  {formData.projectId && (() => {
-                    const project = allProjects.find(p => p.id === formData.projectId);
-                    if (!project) return null;
-                    return (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }} 
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="col-span-2 bg-slate-900 rounded-2xl overflow-hidden shadow-xl"
-                      >
-                        <div className="bg-indigo-600 px-4 py-2 flex justify-between items-center">
-                           <div className="flex flex-col">
-                              <span className="text-[10px] font-black uppercase text-white tracking-widest">{project.name}</span>
-                              <span className="text-[8px] font-bold text-white/50 uppercase">{project.id}</span>
-                           </div>
-                           <div className="flex gap-1.5">
-                              <Badge className="bg-white/20 text-white border-none text-[8px] px-1 h-3.5 font-black uppercase tracking-tighter">Active</Badge>
-                              <Badge className="bg-amber-400 text-slate-900 border-none text-[8px] px-1 h-3.5 font-black uppercase tracking-tighter">PRI: {project.priority || 'High'}</Badge>
-                           </div>
-                        </div>
-                        <div className="p-4 space-y-4">
-                           {/* Metrics removed for cleaner briefing */}
-                           <div className="grid grid-cols-3 gap-1 py-3 border-y border-white/5">
-                              <div className="space-y-0.5">
-                                 <span className="text-[7px] font-black uppercase text-indigo-400">Start Date</span>
-                                 <p className="text-[9px] font-black text-white">{project.startDate || '2026-01-12'}</p>
-                              </div>
-                              <div className="space-y-0.5 px-1 border-x border-white/5">
-                                 <span className="text-[7px] font-black uppercase text-indigo-400">Deadline</span>
-                                 <p className="text-[9px] font-black text-rose-400">{project.deadline || '2026-07-23'}</p>
-                              </div>
-                              <div className="space-y-0.5 pl-1">
-                                 <span className="text-[7px] font-black uppercase text-indigo-400">Source</span>
-                                 <p className="text-[9px] font-black text-white">Super Admin</p>
-                              </div>
-                           </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })()}
-
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Role <span className="text-rose-500">*</span></Label>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Role <span className="text-rose-500">*</span></Label>
                     <Select 
                       disabled={!formData.projectId} 
                       value={formData.role} 
                       onValueChange={v => setFormData(prev => ({ ...prev, role: v }))}
                     >
-                      <SelectTrigger className="rounded-xl border-border/50 bg-secondary/10 h-11 font-medium disabled:opacity-50">
+                      <SelectTrigger className="rounded-xl border-border/40 bg-secondary/10 h-9 font-medium text-sm disabled:opacity-50">
                         <SelectValue placeholder="Select role" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-none shadow-2xl">
@@ -358,13 +298,52 @@ export default function TeamAssignmentPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {formData.projectId && (() => {
+                    const project = allProjects.find(p => p.id === formData.projectId);
+                    if (!project) return null;
+                    return (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.98 }} 
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="col-span-2 bg-slate-900 rounded-xl overflow-hidden shadow-lg"
+                      >
+                        <div className="bg-indigo-600 px-3 py-1.5 flex justify-between items-center">
+                           <div className="flex flex-col">
+                              <span className="text-[9px] font-black uppercase text-white tracking-widest">{project.name}</span>
+                              <span className="text-[7.5px] font-bold text-white/40 uppercase">{project.id}</span>
+                           </div>
+                           <div className="flex gap-1">
+                              <Badge className="bg-white/10 text-white border-none text-[7px] px-1 h-3 font-black uppercase tracking-tighter">Active</Badge>
+                              <Badge className="bg-amber-400 text-slate-900 border-none text-[7px] px-1 h-3 font-black uppercase tracking-tighter">PRI: {project.priority || 'High'}</Badge>
+                           </div>
+                        </div>
+                        <div className="px-3 py-1.5 space-y-2">
+                           <div className="grid grid-cols-3 gap-2 py-1 border-y border-white/5">
+                              <div className="flex flex-col">
+                                 <span className="text-[5.5px] font-black uppercase text-indigo-300">Start</span>
+                                 <p className="text-[8px] font-black text-white leading-none">{project.startDate || '2026-01-12'}</p>
+                              </div>
+                              <div className="flex flex-col px-1 border-x border-white/5 text-center">
+                                 <span className="text-[5.5px] font-black uppercase text-indigo-300">Deadline</span>
+                                 <p className="text-[8px] font-black text-rose-400 leading-none">{project.deadline || '2026-07-23'}</p>
+                              </div>
+                              <div className="flex flex-col pl-1 text-right">
+                                 <span className="text-[5.5px] font-black uppercase text-indigo-300">Source</span>
+                                 <p className="text-[8px] font-black text-white leading-none">Super Admin</p>
+                              </div>
+                           </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })()}
                 </div>
                 
-                <div className="pt-6">
-                  <Button type="submit" className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 h-12 shadow-lg shadow-indigo-600/20 font-black text-[11px] uppercase tracking-[0.1em] border-none transition-all active:scale-95">
+                <div className="pt-3">
+                  <Button type="submit" className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 h-10 shadow-lg shadow-indigo-600/20 font-black text-[10px] uppercase tracking-[0.1em] border-none transition-all active:scale-95">
                     Create & Assign Member
                   </Button>
-                  <Button type="button" variant="ghost" className="w-full mt-2 rounded-xl h-10 font-bold text-[10px] uppercase tracking-widest text-muted-foreground" onClick={() => setIsAddModalOpen(false)}>
+                  <Button type="button" variant="ghost" className="w-full mt-1.5 rounded-xl h-8 font-bold text-[9px] uppercase tracking-widest text-muted-foreground" onClick={() => setIsAddModalOpen(false)}>
                     Cancel
                   </Button>
                 </div>

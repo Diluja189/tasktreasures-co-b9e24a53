@@ -42,21 +42,8 @@ export default function TasksPage() {
 
   useEffect(() => {
     const loadTasks = () => {
-      let persisted = localStorage.getItem("app_tasks_persistence");
-      
-      // Auto-inject dummy test data if empty to test the UI metrics!
-      if (!persisted || JSON.parse(persisted).length === 0) {
-         const dummyData = [
-           { id: "TSK-001", name: "Build Authentication Logic", description: "Establish secure JWT backend structures", project: "Warehouse System", manager: "Diluja", assignee: "Designer Team", status: "In Progress", priority: "High", progress: 65, deadline: "2026-10-15", createdDate: "2026-04-10" },
-           { id: "TSK-002", name: "Create Database Schema", description: "Audit data models", project: "Warehouse System", manager: "Diluja", assignee: "Backend Dev", status: "Completed", priority: "Medium", progress: 100, deadline: "2026-04-05", createdDate: "2026-03-22" },
-           { id: "TSK-003", name: "Setup Server Infrastructure", description: "Connect cloud APIs", project: "Warehouse System", manager: "Diluja", assignee: "Designer Team", status: "Not Started", priority: "Low", progress: 0, deadline: "2026-02-12", createdDate: "2026-01-10" }, // Delayed
-           { id: "TSK-004", name: "Critical System Patch", description: "Fix critical vulnerability", project: "Security Overhaul", manager: "Desingner", assignee: "Backend Dev", status: "In Progress", priority: "High", progress: 20, deadline: "2023-10-10", createdDate: "2023-10-01" }, // Overdue
-           { id: "TSK-005", name: "UI Components Library", description: "Build out generic React blocks", project: "Warehouse System", manager: "Desingner", assignee: "Frontend Dev", status: "Not Started", priority: "Medium", progress: 0, deadline: "2026-12-05", createdDate: "2026-04-15" }
-         ];
-         localStorage.setItem("app_tasks_persistence", JSON.stringify(dummyData));
-         persisted = JSON.stringify(dummyData);
-      }
-      setTasks(JSON.parse(persisted));
+      const persisted = localStorage.getItem("app_tasks_persistence");
+      setTasks(persisted ? JSON.parse(persisted) : []);
     };
     loadTasks();
     window.addEventListener("storage", loadTasks);
@@ -126,12 +113,21 @@ export default function TasksPage() {
     } else if (type === 'complete') {
       const updated = tasks.map(t => t.id === task.id ? { ...t, status: 'Completed', progress: 100 } : t);
       localStorage.setItem("app_tasks_persistence", JSON.stringify(updated));
+      window.dispatchEvent(new Event("storage"));
       toast.success(`Task "${task.name}" marked as completed.`);
       setForceRender(prev => prev + 1);
     } else if (type === 'edit') {
       toast.info("Task Editor module initiating...");
     } else if (type === 'reassign') {
       toast.info("Reassignment workflow triggered...");
+    }
+  };
+
+  const clearLedger = () => {
+    if (confirm("Are you absolutely sure you want to purge the entire global task ledger? This action is irreversible.")) {
+      localStorage.setItem("app_tasks_persistence", JSON.stringify([]));
+      window.dispatchEvent(new Event("storage"));
+      toast.success("Global task ledger cleared.");
     }
   };
 
@@ -179,14 +175,17 @@ export default function TasksPage() {
              <Workflow className="h-6 w-6 text-indigo-600" /> Task Overview
            </h1>
         </div>
-        <div className="flex items-center gap-3">
-           <Button variant="outline" size="sm" className="h-8 rounded-xl font-bold text-[10px] gap-2 border-none bg-secondary/20 hover:bg-secondary/30 text-foreground" onClick={refreshRegistry}>
-              <RefreshCw className="h-4 w-4" /> Refresh
-           </Button>
-           <Button size="sm" className="h-8 rounded-xl font-bold text-[10px] gap-2 border-none bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-600/20" onClick={() => setIsTaskCreateOpen(true)}>
-              <Plus className="h-4 w-4" /> New Task
-           </Button>
-        </div>
+         <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" className="h-8 rounded-xl font-bold text-[10px] gap-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700" onClick={clearLedger}>
+               Purge Ledger
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 rounded-xl font-bold text-[10px] gap-2 border-none bg-secondary/20 hover:bg-secondary/30 text-foreground" onClick={refreshRegistry}>
+               <RefreshCw className="h-4 w-4" /> Refresh
+            </Button>
+            <Button size="sm" className="h-8 rounded-xl font-bold text-[10px] gap-2 border-none bg-indigo-600 hover:bg-indigo-700 text-white shadow-xl shadow-indigo-600/20" onClick={() => setIsTaskCreateOpen(true)}>
+               <Plus className="h-4 w-4" /> New Task
+            </Button>
+         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white dark:bg-slate-900 overflow-hidden p-3 rounded-2xl border shadow-sm">

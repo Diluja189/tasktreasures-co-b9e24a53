@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   CheckCircle2, Clock, AlertTriangle, PenLine,
   Save, ChevronRight, Target, Calendar, FileText,
@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,8 +15,7 @@ import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const assignedTasks = [];
-const recentUpdates = [];
+import { useRole } from "@/contexts/RoleContext";
 
 const statusOptions = [
   { value: "Not Started", label: "Not Started", color: "bg-slate-400/10 text-slate-500", icon: Clock },
@@ -33,36 +33,116 @@ const statusBadge: Record<StatusKey, string> = {
 };
 
 export default function TaskUpdatesPage() {
-  const [selectedTaskId, setSelectedTaskId] = useState("");
+  const { currentUser } = useRole();
+  const [tasks, setTasks] = useState<any[]>([]);
+
+  // Load Tasks from shared persistence
+  useState(() => {
+    const loadTasks = () => {
+      const savedTasks = localStorage.getItem("app_tasks_persistence");
+      if (savedTasks) setTasks(JSON.parse(savedTasks));
+    };
+    loadTasks();
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "app_tasks_persistence") loadTasks();
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  });
+
+  const assignedTasks = tasks;
+
+  // Derive recent updates from our assigned tasks' histories
+  const recentUpdates = assignedTasks
+    .flatMap(t => (t.history || []).map((h: any) => ({ ...h, task: t.name })))
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 5);
+
+  const [projects, setProjectsList] = useState<any[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState("All");
+  const [manualTaskName, setManualTaskName] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [progress, setProgress] = useState(50);
   const [notes, setNotes] = useState("");
   const [delayReason, setDelayReason] = useState("");
   const [completionSummary, setCompletionSummary] = useState("");
 
-  const selectedTask = assignedTasks.find(t => t.id === selectedTaskId);
+  useEffect(() => {
+    const loadProjects = () => {
+      const persisted = localStorage.getItem("app_projects_persistence");
+      setProjectsList(persisted ? JSON.parse(persisted) : []);
+    };
+    loadProjects();
+    window.addEventListener("storage", loadProjects);
+    return () => window.removeEventListener("storage", loadProjects);
+  }, []);
+
+  const filteredTasks = useMemo(() => {
+    if (selectedProjectId === "All") return tasks;
+    return tasks.filter(t => (t.project === selectedProjectId || t.projectId === selectedProjectId));
+  }, [tasks, selectedProjectId]);
+
   const isDelayed = selectedStatus === "Delayed";
   const isCompleted = selectedStatus === "Completed";
-  const canSubmit = selectedTaskId !== "" && selectedStatus !== "";
+  const canSubmit = manualTaskName.trim() !== "" && selectedStatus !== "";
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canSubmit) return;
-
-    if (isCompleted) {
-      toast.success(`"${selectedTask?.name}" marked as Completed. Great work!`, { duration: 4000 });
-    } else if (isDelayed) {
-      toast.warning(`"${selectedTask?.name}" flagged as Delayed. Your manager has been notified.`);
-    } else {
-      toast.success(`Status updated to "${selectedStatus}" for "${selectedTask?.name}".`);
+  const handleSubmit = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e && 'preventDefault' in e) e.preventDefault();
+    
+    if (!canSubmit) {
+      toast.error("Please identify your work and status before updating.");
+      return;
     }
 
-    setSelectedTaskId("");
-    setSelectedStatus("");
-    setProgress(50);
-    setNotes("");
-    setDelayReason("");
-    setCompletionSummary("");
+    try {
+      const finalProgress = selectedStatus === "Completed" ? 100 : progress;
+      const finalNote = notes || "Standard operational update.";
+
+      const timestamp = new Date().toLocaleString();
+      const updateEntry = {
+        status: selectedStatus || "In Progress",
+        progress: finalProgress,
+        note: finalNote,
+        updatedAt: timestamp,
+        updatedBy: currentUser.name,
+        role: "Backend Developer",
+        projectName: selectedProjectId === "All" ? "Uncategorized" : selectedProjectId
+      };
+
+      // Since it's manual, we'll create a standalone work unit record for the manager
+      const manualTask = {
+        id: `M-TSK-${Math.floor(1000+Math.random()*9000)}`,
+        name: manualTaskName,
+        project: updateEntry.projectName,
+        assignee: currentUser.name,
+        status: selectedStatus,
+        progress: finalProgress,
+        latestUpdate: updateEntry,
+        history: [updateEntry]
+      };
+
+      const persisted = localStorage.getItem("app_tasks_persistence");
+      const currentTasks = persisted ? JSON.parse(persisted) : [];
+      const updatedTasks = [manualTask, ...currentTasks];
+
+      localStorage.setItem("app_tasks_persistence", JSON.stringify(updatedTasks));
+      setTasks(updatedTasks);
+      window.dispatchEvent(new Event("storage"));
+
+      toast.success(`Record for "${manualTaskName}" successfully synchronized.`);
+
+      // Cleanup
+      setManualTaskName("");
+      setSelectedStatus("");
+      setProgress(50);
+      setNotes("");
+      setDelayReason("");
+      setCompletionSummary("");
+      
+    } catch (error) {
+      console.error("Submission Error:", error);
+      toast.error("Failed to save update. Please try again.");
+    }
   };
 
   return (
@@ -89,54 +169,54 @@ export default function TaskUpdatesPage() {
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Task Selection */}
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Select Task to Update</Label>
-                  <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
-                    <SelectTrigger className="h-12 rounded-2xl border-none bg-secondary/30 font-bold text-sm">
-                      <SelectValue placeholder="Choose a task..." />
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest text-indigo-600">Step 1: Link to Project</Label>
+                  <Select value={selectedProjectId} onValueChange={(val) => {
+                    setSelectedProjectId(val);
+                  }}>
+                    <SelectTrigger className="h-12 rounded-2xl border-none bg-indigo-50/50 border border-indigo-100 font-bold text-sm">
+                      <SelectValue placeholder="Choose a project..." />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border-none shadow-2xl p-1.5">
-                      {assignedTasks.map(t => (
-                        <SelectItem key={t.id} value={t.id} className="rounded-xl py-3 cursor-pointer">
-                          <div className="flex items-center gap-3">
-                            <div>
-                              <p className="font-bold text-sm">{t.name}</p>
-                              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                <Target className="h-2.5 w-2.5" /> {t.project} · Current: {t.currentStatus}
-                              </p>
-                            </div>
-                          </div>
+                      <SelectItem value="All" className="rounded-xl py-3 cursor-pointer tracking-wider">Uncategorized / Independent Work</SelectItem>
+                      {projects.map(p => (
+                        <SelectItem key={p.id} value={p.name} className="rounded-xl py-3 cursor-pointer font-bold">
+                          {p.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                {/* Task Preview */}
-                <AnimatePresence mode="wait">
-                  {selectedTask && (
+                {/* Step 2: Role & Task (Only visible after project selection) */}
+                <AnimatePresence>
+                  {selectedProjectId !== "All" && (
                     <motion.div
-                      key={selectedTask.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100 flex items-center gap-4"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="space-y-6 pt-4 border-t border-indigo-100/50 overflow-hidden"
                     >
-                      <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0">
-                        <FileText className="h-5 w-5" />
+                      <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">Role Identification</p>
+                          <Badge className="mt-1 bg-indigo-600 text-white border-none text-[9px] font-black px-2 py-0.5 uppercase tracking-tighter">
+                            Backend Developer
+                          </Badge>
+                        </div>
+                        <div className="text-right">
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm">{selectedTask.name}</p>
-                        <p className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
-                          <Target className="h-2.5 w-2.5" /> {selectedTask.project}
-                          <span className="text-muted-foreground/50">·</span>
-                          <Calendar className="h-2.5 w-2.5" /> Due {selectedTask.deadline}
-                        </p>
+
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest text-indigo-600 font-bold tracking-tighter">Step 3: Manual Task Type</Label>
+                        <Input 
+                          placeholder="e.g. Optimized Auth Middleware" 
+                          className="h-12 rounded-2xl border-none bg-secondary/30 font-bold text-sm"
+                          value={manualTaskName}
+                          onChange={(e) => setManualTaskName(e.target.value)}
+                        />
                       </div>
-                      <Badge className={`${statusBadge[selectedTask.currentStatus as StatusKey]} text-[8px] font-black uppercase shrink-0`}>
-                        {selectedTask.currentStatus}
-                      </Badge>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -151,7 +231,10 @@ export default function TaskUpdatesPage() {
                         <button
                           key={opt.value}
                           type="button"
-                          onClick={() => setSelectedStatus(opt.value)}
+                          onClick={() => {
+                            setSelectedStatus(opt.value);
+                            if (opt.value === "Completed") setProgress(100);
+                          }}
                           className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer
                             ${selectedStatus === opt.value
                               ? 'border-indigo-500 bg-indigo-50 shadow-md'
@@ -246,7 +329,7 @@ export default function TaskUpdatesPage() {
 
                 {/* Submit */}
                 <Button
-                  type="submit"
+                  onClick={handleSubmit}
                   disabled={!canSubmit}
                   className={`w-full h-12 rounded-2xl font-bold gap-2 border-none transition-all active:scale-95
                     ${canSubmit
@@ -259,7 +342,7 @@ export default function TaskUpdatesPage() {
                   `}
                 >
                   <Save className="h-4 w-4" />
-                  {isCompleted ? "Mark as Completed" : isDelayed ? "Submit Delay Report" : "Save Update"}
+                  Update
                 </Button>
               </form>
             </CardContent>

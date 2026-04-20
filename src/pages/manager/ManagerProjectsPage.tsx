@@ -79,118 +79,128 @@ export default function ManagerProjectsPage() {
          </div>
       </div>
 
-      {/* Grid View Only */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Grid View Optimized for Width & Low Height */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {filtered.map((project, i) => (
           <motion.div
             key={project.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
-            className="h-full flex flex-col"
+            className="flex flex-col"
           >
-            <Card className="border border-slate-200/60 dark:border-border shadow-sm bg-white dark:bg-card rounded-2xl overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full relative">
-              <CardHeader className="p-6 pb-4">
-                <div className="flex items-center justify-between mb-3">
-                   <div className="flex gap-2 items-center">
-                      <Badge variant="outline" className={`${statusStyles[project.status as keyof typeof statusStyles]} text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-md`}>
-                         {project.status === "On-Time" && <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 inline" />}
-                         {project.status === "Delayed" && <AlertCircle className="w-3.5 h-3.5 mr-1.5 inline" />}
-                         {project.status === "At Risk" && <AlertTriangle className="w-3.5 h-3.5 mr-1.5 inline" />}
-                         {project.status}
-                      </Badge>
-                      <Badge className={`${priorityStyles[project.priority as keyof typeof priorityStyles]} text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-md`}>
-                         PRI: {project.priority}
-                      </Badge>
-                   </div>
-                   <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-100 dark:hover:bg-secondary">
-                            <MoreVertical className="h-4 w-4" />
-                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="rounded-2xl border-none shadow-2xl p-2 w-48">
-                         <DropdownMenuItem className="rounded-xl gap-2 py-2 cursor-pointer" onClick={() => navigate("/manager/tasks")}>
-                            <Target className="h-4 w-4" /> Breakdown Tasks
-                         </DropdownMenuItem>
-                         <DropdownMenuItem className="rounded-xl gap-2 py-2 cursor-pointer" onClick={() => navigate("/manager/assignments")}>
-                            <Users className="h-4 w-4" /> Allocate Team
-                         </DropdownMenuItem>
-                      </DropdownMenuContent>
-                   </DropdownMenu>
+            <Card className="border border-slate-200/50 dark:border-border shadow-sm bg-white dark:bg-card rounded-2xl overflow-hidden group hover:shadow-lg transition-all duration-300 relative flex flex-col sm:flex-row h-full">
+              {/* Left Side: Basic Info & Branding */}
+              <div className="sm:w-2/5 p-5 border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-border/40 flex flex-col h-full bg-slate-50/30 dark:bg-slate-900/10">
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                   <Badge variant="outline" className={`${statusStyles[project.status as keyof typeof statusStyles]} text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md`}>
+                      {project.status === "On-Time" && <CheckCircle2 className="w-3 h-3 mr-1 inline" />}
+                      {project.status === "Delayed" && <AlertCircle className="w-3 h-3 mr-1 inline" />}
+                      {project.status === "At Risk" && <AlertTriangle className="w-3 h-3 mr-1 inline" />}
+                      {project.status}
+                   </Badge>
+                   <Badge className={`${priorityStyles[project.priority as keyof typeof priorityStyles]} text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md`}>
+                      PRI: {project.priority}
+                   </Badge>
                 </div>
-                <CardTitle className="text-xl font-bold text-slate-900 dark:text-foreground group-hover:text-purple-600 transition-colors">{project.name}</CardTitle>
-                <CardDescription className="line-clamp-2 text-sm leading-relaxed mt-1 flex-1">{project.description}</CardDescription>
-              </CardHeader>
+                
+                <h3 className="text-lg font-black text-slate-900 dark:text-foreground group-hover:text-purple-600 transition-colors leading-tight mb-2">
+                  {project.name}
+                </h3>
+                <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed mb-4">
+                  {project.description}
+                </p>
 
-              <CardContent className="space-y-6 flex-1 p-6 pt-0 flex flex-col">
-                  {/* Briefing Assets Section */}
-                  {project.assignmentFiles && project.assignmentFiles.length > 0 && (
-                    <div className="space-y-3 bg-indigo-50/30 dark:bg-indigo-500/5 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 shadow-inner">
-                       <p className="text-[10px] uppercase font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 tracking-widest">
-                          <ShieldCheck className="w-3.5 h-3.5" /> Admin Briefing Assets
-                       </p>
-                       <div className="flex flex-wrap gap-2">
-                          {project.assignmentFiles.map((file: string, idx: number) => (
-                             <div 
-                               key={idx} 
-                               onClick={() => {
-                                 toast.info(`Extracting tactical asset: ${file}`, {
-                                   description: "Preparing secure download link..."
-                                 });
-                                 setTimeout(() => toast.success(`${file} downloaded successfully to local storage.`), 1500);
-                               }}
-                               className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-secondary/40 rounded-xl border border-indigo-100/50 shadow-sm cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 dark:hover:bg-indigo-500/10 transition-all group group/file"
-                             >
-                                <FileIcon className="h-3 w-3 text-indigo-500 group-hover/file:scale-110 transition-transform" />
-                                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate max-w-[120px]">{file}</span>
-                                <Download className="h-2.5 w-2.5 text-slate-400 group-hover/file:text-indigo-600 ml-1 transition-colors" />
-                             </div>
-                          ))}
-                       </div>
+                <div className="mt-auto space-y-2">
+                   <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
+                      <span className="uppercase tracking-widest">Authority</span>
+                      <span className="text-purple-600 dark:text-purple-400">{project.assignedBy || 'Super Admin'}</span>
+                   </div>
+                   {project.assignedMembers < (project.teamCapacity || 5) ? (
+                      <Button 
+                        size="sm"
+                        className="w-full h-8 rounded-lg gap-1.5 bg-purple-600 hover:bg-purple-700 shadow-sm font-black uppercase text-[9px] tracking-widest transition-all active:scale-95"
+                        onClick={() => navigate("/manager/assignments")}
+                      >
+                        <UserPlus className="h-3 w-3" /> Assign Team
+                      </Button>
+                   ) : (
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        className="w-full h-8 rounded-lg gap-1.5 border-emerald-100 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 font-black uppercase text-[9px] tracking-widest"
+                      >
+                        <CheckCircle2 className="h-3 w-3" /> Team Full
+                      </Button>
+                   )}
+                </div>
+              </div>
+
+              {/* Right Side: Operational Intelligence */}
+              <CardContent className="flex-1 p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                     <p className="text-[10px] uppercase font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 tracking-widest">
+                        <ShieldCheck className="w-3.5 h-3.5" /> Admin Briefing Assets
+                     </p>
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg">
+                              <MoreVertical className="h-4 w-4 text-slate-400" />
+                           </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl p-1.5 w-44">
+                           <DropdownMenuItem className="rounded-lg text-xs font-bold gap-2" onClick={() => navigate("/manager/tasks")}>
+                              <Target className="h-3.5 w-3.5" /> Breakdown Tasks
+                           </DropdownMenuItem>
+                           <DropdownMenuItem className="rounded-lg text-xs font-bold gap-2" onClick={() => navigate("/manager/assignments")}>
+                              <Users className="h-3.5 w-3.5" /> Allocate Team
+                           </DropdownMenuItem>
+                        </DropdownMenuContent>
+                     </DropdownMenu>
+                  </div>
+
+                  {project.assignmentFiles && project.assignmentFiles.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                       {project.assignmentFiles.map((file: string, idx: number) => (
+                          <div 
+                            key={idx} 
+                            onClick={() => toast.success(`${file} extraction started...`)}
+                            className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-100 dark:border-border shadow-xs cursor-pointer hover:bg-indigo-50 transition-all group/file max-w-full overflow-hidden"
+                          >
+                             <FileIcon className="h-2.5 w-2.5 text-indigo-500 shrink-0" />
+                             <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400 truncate">{file}</span>
+                          </div>
+                       ))}
+                    </div>
+                  ) : (
+                    <div className="py-2 px-3 border border-dashed rounded-xl bg-slate-50/50 flex items-center justify-center">
+                       <p className="text-[8px] font-black text-slate-300 tracking-widest uppercase italic">No managed assets</p>
                     </div>
                   )}
 
-                 <div className="grid grid-cols-2 gap-4 mt-auto pt-4 border-t border-slate-100 dark:border-border/40">
-                    <div className="space-y-1">
-                       <p className="text-[10px] uppercase font-black text-slate-400 dark:text-muted-foreground/60 leading-none">Timeline</p>
-                       <div className="flex flex-col gap-1 mt-2">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                             <Calendar className="h-3 w-3 text-purple-500/70" /> 
-                             <span className="text-[9px] uppercase text-muted-foreground mr-1">Start:</span>
-                             {project.startDate || '2026-01-12'}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                             <Clock className="h-3 w-3 text-rose-500/70" />
-                             <span className="text-[9px] uppercase text-muted-foreground mr-1">End:</span>
-                             {project.deadline || '2026-07-23'}
-                          </div>
-                       </div>
-                    </div>
-                    <div className="space-y-1 text-right">
-                       <p className="text-[10px] uppercase font-black text-slate-400 dark:text-muted-foreground/60 leading-none">Authority Info</p>
-                       <div className="flex flex-col items-end gap-1 mt-2">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                             <span className="text-[9px] uppercase text-muted-foreground">Assigned By:</span>
-                             <Badge variant="outline" className="border-none bg-purple-50 text-purple-600 text-[10px] font-black h-5 px-2">
-                               {project.assignedBy || 'Super Admin'}
-                             </Badge>
-                          </div>
-                       </div>
-                    </div>
-                 </div>
+                  <div className="grid grid-cols-2 gap-6 pt-3 border-t border-slate-100 dark:border-border/40">
+                     <div className="space-y-2">
+                        <p className="text-[9px] uppercase font-black text-slate-400 dark:text-muted-foreground/60 leading-none tracking-widest">Timeline</p>
+                        <div className="grid grid-cols-2 gap-3">
+                           <div className="flex flex-col">
+                              <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">Start:</span>
+                              <span className="text-[10px] font-black text-slate-700 dark:text-slate-300">{project.startDate || '2026-04-09'}</span>
+                           </div>
+                           <div className="flex flex-col text-right">
+                              <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">End:</span>
+                              <span className="text-[10px] font-black text-rose-500">{project.deadline || '2026-05-21'}</span>
+                           </div>
+                        </div>
+                     </div>
+                     <div className="space-y-2 text-right">
+                        <p className="text-[9px] uppercase font-black text-slate-400 dark:text-muted-foreground/60 leading-none tracking-widest">Authority Info</p>
+                        <div className="flex flex-col items-end">
+                           <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">Assigned By:</span>
+                           <span className="text-[10px] font-black text-purple-600">{project.assignedBy || 'Super Admin'}</span>
+                        </div>
+                     </div>
+                  </div>
               </CardContent>
-
-              <CardFooter className="p-6 pt-0">
-                 {project.assignedMembers < (project.teamCapacity || 5) && (
-                    <Button 
-                      className="w-full h-12 rounded-xl gap-2 bg-purple-600 hover:bg-purple-700 shadow-md shadow-purple-600/20 font-black uppercase text-xs tracking-widest transition-all active:scale-95"
-                      onClick={() => navigate("/manager/assignments")}
-                    >
-                      <UserPlus className="h-4 w-4" /> Assign Team
-                    </Button>
-                 )}
-              </CardFooter>
             </Card>
           </motion.div>
         ))}

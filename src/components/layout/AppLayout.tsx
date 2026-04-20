@@ -3,7 +3,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { useRole } from "@/contexts/RoleContext";
 import { Bell, Search, Moon, Sun } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { NotificationDropdown } from "./NotificationDropdown";
 
@@ -75,9 +75,17 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <div className="h-5 w-px bg-border/60 mx-2" />
 
               {/* Role badge */}
-              <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider ${roleColors[currentUser.role]}`}>
-                {roleLabels[currentUser.role]}
-              </span>
+              {useMemo(() => {
+                const displayRole = currentUser.role === 'admin' ? 'admin' 
+                                  : location.pathname.startsWith("/manager") ? "manager" 
+                                  : location.pathname.startsWith("/member") ? "user" 
+                                  : currentUser.role;
+                return (
+                  <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider transition-all duration-300 ${roleColors[displayRole]}`}>
+                    {roleLabels[displayRole]}
+                  </span>
+                );
+              }, [location.pathname, currentUser.role])}
             </div>
           </header>
 
