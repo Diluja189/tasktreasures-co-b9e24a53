@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import logo from "@/assets/iatt-logo.png";
 import {
   LayoutDashboard, FolderKanban, CheckSquare, Users, Shield,
   BarChart3, Clock, FileText, Settings, ChevronDown, LogOut,
@@ -69,6 +70,7 @@ const roleColors: Record<UserRole, string> = {
   user: "bg-accent/20 text-accent",
 };
 
+
 export function AppSidebar() {
   const { currentUser, setRole } = useRole();
   const { state } = useSidebar();
@@ -92,19 +94,33 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r-0">
       <SidebarHeader className="p-4">
         {!collapsed && (
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <FolderKanban className="h-4 w-4 text-primary-foreground" />
+          <div 
+            className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => navigate("/")}
+          >
+            <div className="h-10 w-10 flex items-center justify-center overflow-hidden rounded-lg">
+              <img 
+                src={logo} 
+                alt="IATT Logo" 
+                className="h-full w-auto object-contain"
+              />
             </div>
-            <div>
-              <h1 className="font-display text-sm font-semibold text-sidebar-accent-foreground">IATS</h1>
-              <p className="text-[10px] text-sidebar-muted">Production Tracker</p>
+            <div className="flex flex-col">
+              <h1 className="font-display text-base font-bold text-sidebar-accent-foreground leading-none">IATS</h1>
+              <p className="text-[10px] text-sidebar-muted font-medium mt-1">Production Tracker</p>
             </div>
           </div>
         )}
         {collapsed && (
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center mx-auto">
-            <FolderKanban className="h-4 w-4 text-primary-foreground" />
+          <div 
+            className="h-10 w-10 flex items-center justify-center mx-auto cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => navigate("/")}
+          >
+            <img 
+              src={logo} 
+              alt="IATT Logo" 
+              className="h-8 w-auto object-contain"
+            />
           </div>
         )}
       </SidebarHeader>

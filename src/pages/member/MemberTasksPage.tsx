@@ -1,245 +1,292 @@
-import { useState } from "react";
-import {
-  Search, Play, CheckCircle2, Clock,
-  ChevronRight, Target, Calendar, Timer, Eye,
-  AlertCircle, MoreVertical, FileText, Download
+import { useState, useEffect, useMemo } from "react";
+import { 
+  ShieldAlert, Activity, ChevronRight, ListTodo, RefreshCw, 
+  Rocket, CheckCircle2, TrendingUp, Layers, Target, 
+  Briefcase, Layout, Clock, Zap, Search, PenLine, Timer,
+  ArrowUpRight, Network, X, ArrowRightLeft, MessageSquare,
+  AlertTriangle, ShieldCheck, Send, ClipboardCheck, Lock
 } from "lucide-react";
-import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { 
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle 
-} from "@/components/ui/dialog";
+import { useRole } from "@/contexts/RoleContext";
+import { toast } from "sonner";
 
-const myTasks = [];
-
-const priorityStyles: Record<string, string> = {
-  High: "bg-rose-500/10 text-rose-600 border-none",
-  Medium: "bg-amber-500/10 text-amber-600 border-none",
-  Low: "bg-indigo-500/10 text-indigo-600 border-none",
+const STORAGE_KEYS = {
+  TASKS: "app_member_tasks_store",
+  UPDATES: "app_member_updates_store",
+  CERTIFIED_ROLE: "app_certified_member_role"
 };
 
-const statusStyles: Record<string, string> = {
-  "Completed": "bg-emerald-500/10 text-emerald-600 border-none",
-  "In Progress": "bg-indigo-500/10 text-indigo-600 border-none",
-  "Not Started": "bg-slate-400/10 text-slate-500 border-none",
-  "Delayed": "bg-rose-500/10 text-rose-600 border-none",
-};
+type MemberRole = "Designer" | "Frontend Developer" | "Backend Developer" | "Tester" | "Bug Fixer";
 
 export default function MemberTasksPage() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const { currentUser } = useRole();
   const navigate = useNavigate();
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [certifiedRole] = useState<MemberRole>(() => {
+     return (localStorage.getItem(STORAGE_KEYS.CERTIFIED_ROLE) as MemberRole) || (currentUser.name.includes("Backend") ? "Backend Developer" : "Designer");
+  });
 
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [selectedProjectForDocs, setSelectedProjectForDocs] = useState<string | null>(null);
-  const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+  const [isHandoverMode, setIsHandoverMode] = useState(false);
+  const [tacticalData, setTacticalData] = useState({
+    completed: "",
+    pending: "",
+    nextStep: "",
+    blockers: "",
+    managerNotes: "",
+    memberNotes: "",
+    progress: 0
+  });
 
   useEffect(() => {
-    const savedDocs = JSON.parse(localStorage.getItem("app_documents_persistence") || "[]");
-    setDocuments(savedDocs);
-  }, [isDocsModalOpen]);
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEYS.TASKS) || "[]");
+    setTasks(saved);
+  }, []);
 
-  const handleOpenDocs = (projectName: string) => {
-    setSelectedProjectForDocs(projectName);
-    setIsDocsModalOpen(true);
+  const myTasks = useMemo(() => tasks.filter(t => t.assignedRole === certifiedRole), [tasks, certifiedRole]);
+
+  const efficiencyMetrics = useMemo(() => {
+    const completed = myTasks.filter(t => t.progress === 100).length;
+    const rate = myTasks.length ? Math.round((completed / myTasks.length) * 100) : 0;
+    const onTimeRate = 94; // Simulation
+    return { rate, onTimeRate, overall: 91 };
+  }, [myTasks]);
+
+  const getNextRole = (role: MemberRole): string => {
+    const chain: MemberRole[] = ["Designer", "Frontend Developer", "Backend Developer", "Tester", "Bug Fixer"];
+    const idx = chain.indexOf(role);
+    return chain[(idx + 1) % chain.length];
   };
 
-  const filtered = myTasks.filter(t =>
-    (statusFilter === "All" || t.status === statusFilter) &&
-    (t.name.toLowerCase().includes(search.toLowerCase()) || t.project.toLowerCase().includes(search.toLowerCase()))
-  );
+  const getPreviousRole = (role: MemberRole): string => {
+    const chain: MemberRole[] = ["Designer", "Frontend Developer", "Backend Developer", "Tester", "Bug Fixer"];
+    const idx = chain.indexOf(role);
+    return idx === 0 ? "Project Start" : chain[idx - 1];
+  };
 
-  const handleStatusUpdate = (taskName: string, newStatus: string) => {
-    toast.success(`"${taskName}" marked as ${newStatus}.`);
+  const nextRole = getNextRole(certifiedRole);
+  const previousRole = getPreviousRole(certifiedRole);
+
+  const handleOpenUpdate = (task: any, handover: boolean = false) => {
+    setSelectedTask(task);
+    setIsHandoverMode(handover);
+    setTacticalData({
+      completed: "", pending: "", nextStep: "", blockers: "",
+      managerNotes: "", memberNotes: "", progress: task.progress
+    });
+    setIsUpdateModalOpen(true);
+  };
+
+  const handleBroadcastSync = () => {
+    if (!selectedTask) return;
+    const allUpdates = JSON.parse(localStorage.getItem(STORAGE_KEYS.UPDATES) || "[]");
+    const newUpdate = {
+      ...tacticalData,
+      id: Math.random().toString(36).substr(2, 9),
+      taskId: selectedTask.id,
+      taskName: selectedTask.name,
+      timestamp: Date.now(),
+      type: isHandoverMode ? "Handover" : "Technical Sync"
+    };
+    localStorage.setItem(STORAGE_KEYS.UPDATES, JSON.stringify([newUpdate, ...allUpdates]));
+    
+    const updatedTasks = tasks.map(t => t.id === selectedTask.id ? { ...t, progress: tacticalData.progress } : t);
+    setTasks(updatedTasks);
+    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(updatedTasks));
+    
+    setIsUpdateModalOpen(false);
+    toast.success(isHandoverMode ? "Phase Handover Synchronized" : "Technical Broadcast Dispatched");
   };
 
   return (
-    <div className="space-y-8 pb-10">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            My Tasks
-          </h1>
-          <p className="text-muted-foreground mt-1">All tasks assigned to you. Start, track progress, and mark them done.</p>
+    <div className="max-w-[1240px] mx-auto space-y-4 pb-8 px-4 pt-4 md:px-6">
+      {/* HUD: Operational Chain */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-950 p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-5 opacity-[0.03] pointer-events-none text-indigo-600"><Network size={120} /></div>
+        <div className="flex items-center gap-3 md:gap-4 relative z-10">
+           <div className="h-9 w-9 bg-indigo-600 rounded-lg shadow-xl flex items-center justify-center text-white shrink-0"><Network size={18} /></div>
+           <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                 <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.15em] leading-none">Standard User</p>
+                 <div className="h-0.5 w-0.5 rounded-full bg-slate-300" />
+                 <Badge className="bg-rose-500 text-white border-none font-black text-[9px] px-2 py-0.5 uppercase tracking-tight flex items-center gap-1 shrink-0"><Lock size={8} /> Certified</Badge>
+              </div>
+              <div className="mt-1.5 flex items-center gap-2.5 overflow-x-auto no-scrollbar">
+                 <h1 className="text-xl font-black tracking-tight text-foreground uppercase leading-none truncate">MY TASKS</h1>
+                 <Badge className="bg-indigo-600 text-white border-none font-black text-[9px] uppercase tracking-tight px-2.5 py-0.5 rounded-full whitespace-nowrap">{certifiedRole}</Badge>
+                 <div className="h-0.5 w-0.5 rounded-full bg-slate-300 shrink-0" />
+                 <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.15em] whitespace-nowrap">Session: <span className="text-primary font-black">{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></p>
+              </div>
+           </div>
+        </div>
+        
+        {/* Workflow Chain Visualizer */}
+        <div className="flex items-center gap-0.5 p-0.5 bg-slate-950 dark:bg-slate-900 rounded-lg border border-slate-800 shadow-sm z-10 overflow-x-auto no-scrollbar max-w-full">
+           <div className="px-2.5 py-0.5 border-r border-slate-800/50 text-center shrink-0"><p className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.15em] leading-none">Source</p><p className="text-[9px] font-black text-slate-400 uppercase tracking-tight leading-none">{previousRole}</p></div>
+           <div className="px-3.5 py-0.5 bg-indigo-600 text-white rounded-md flex items-center gap-2 shrink-0"><div className="space-y-0"><p className="text-[9px] font-bold uppercase text-indigo-200 tracking-[0.15em] leading-none">Active</p><p className="text-[9px] font-black uppercase tracking-tight leading-none">{certifiedRole}</p></div><Activity size={8} className="animate-pulse" /></div>
+           <div className="px-2.5 py-0.5 text-center flex items-center gap-2 shrink-0"><ChevronRight size={10} className="text-slate-600" /><div className="space-y-0"><p className="text-[9px] font-bold uppercase text-slate-500 tracking-[0.15em] leading-none">Next</p><p className="text-[9px] font-black text-slate-400 uppercase tracking-tight leading-none">{nextRole}</p></div></div>
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: "Total", value: myTasks.length, color: "text-indigo-600", bg: "bg-indigo-50" },
-          { label: "In Progress", value: myTasks.filter(t => t.status === "In Progress").length, color: "text-amber-600", bg: "bg-amber-50" },
-          { label: "Completed", value: myTasks.filter(t => t.status === "Completed").length, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Delayed", value: myTasks.filter(t => t.status === "Delayed").length, color: "text-rose-600", bg: "bg-rose-50" },
-        ].map((s, i) => (
-          <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card className={`border-none shadow-sm ${s.bg} rounded-2xl`}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{s.label}</p>
-                <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+      {/* KPI HERO */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+         <Card className="md:col-span-3 border-none shadow-sm bg-indigo-600 text-white rounded-xl overflow-hidden group relative">
+            <div className="absolute top-0 right-0 p-4 opacity-10 font-black text-2xl leading-none">EFF</div>
+            <CardContent className="p-5 space-y-1 relative z-10">
+               <p className="text-indigo-200 text-[9px] font-bold uppercase tracking-[0.15em]">Score</p>
+               <h3 className="text-3xl font-black tracking-tight leading-none">{efficiencyMetrics.overall}%</h3>
+               <div className="pt-3 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.15em] text-indigo-100"><TrendingUp size={10}/> Stabilized</div>
+            </CardContent>
+         </Card>
+         <Card className="md:col-span-9 border-none shadow-sm bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-100">
+            <CardHeader className="p-4 pb-2 border-b border-slate-50 dark:border-slate-800/50 flex flex-row items-center justify-between">
+               <div className="space-y-0.5"><CardTitle className="text-base font-black uppercase tracking-tight leading-none">Yield Overview</CardTitle><CardDescription className="text-[9px] uppercase font-bold tracking-[0.15em] text-slate-400 leading-none">{certifiedRole}</CardDescription></div>
+               <Badge className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-none font-black text-[9px] px-2.5 py-0.5 rounded-lg tracking-tight">{efficiencyMetrics.onTimeRate}%</Badge>
+            </CardHeader>
+            <CardContent className="p-4 pt-3">
+               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[
+                    { label: "Assigned", val: myTasks.length, icon: ListTodo, color: "bg-indigo-600" },
+                    { label: "Working", val: myTasks.filter(t => t.progress < 100).length, icon: RefreshCw, color: "bg-amber-500" },
+                    { label: "Ready", val: myTasks.filter(t => t.progress === 100).length, icon: Rocket, color: "bg-emerald-600" },
+                    { label: "Score", val: efficiencyMetrics.rate + "%", icon: CheckCircle2, color: "bg-rose-500" },
+                  ].map((k, i) => (
+                    <div key={i} className="flex flex-col gap-1">
+                       <div className="flex items-center gap-1.5"><div className={`h-4 w-4 rounded-md ${k.color} flex items-center justify-center text-white shadow-sm`}><k.icon size={8} /></div><p className="text-[9px] font-bold uppercase text-slate-400 tracking-[0.15em] leading-none">{k.label}</p></div>
+                       <h4 className="text-lg font-black text-slate-900 dark:text-white tracking-tight leading-none">{k.val}</h4>
+                    </div>
+                  ))}
+               </div>
+            </CardContent>
+         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 bg-card/50 backdrop-blur-sm p-4 rounded-3xl border shadow-sm">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search tasks..." className="pl-10 h-10 border-none bg-background rounded-xl" value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-10 rounded-xl border-none bg-background w-full sm:w-44 text-xs font-bold">
-            <SelectValue placeholder="All Status" />
-          </SelectTrigger>
-          <SelectContent className="rounded-2xl border-none shadow-xl p-1.5">
-            <SelectItem value="All">All Status</SelectItem>
-            <SelectItem value="Not Started">Not Started</SelectItem>
-            <SelectItem value="In Progress">In Progress</SelectItem>
-            <SelectItem value="Completed">Completed</SelectItem>
-            <SelectItem value="Delayed">Delayed</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Task Cards */}
-      <div className="space-y-4">
-        {filtered.map((task, i) => (
-          <motion.div key={task.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-            <Card className={`border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden group hover:shadow-xl hover:bg-card transition-all duration-300 ${task.status === 'Delayed' ? 'border-l-4 border-rose-400' : ''}`}>
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center gap-5">
-                  {/* Task Info */}
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge className={`${priorityStyles[task.priority]} text-[8px] font-black uppercase`}>{task.priority}</Badge>
-                      <Badge className={`${statusStyles[task.status]} text-[8px] font-black uppercase`}>{task.status}</Badge>
-                      {task.status === "Delayed" && <AlertCircle className="h-3.5 w-3.5 text-rose-500 animate-pulse" />}
-                    </div>
-                    <h3 className="font-bold text-base group-hover:text-indigo-600 transition-colors">{task.name}</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{task.description}</p>
-                    <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground flex-wrap">
-                      <span className="flex items-center gap-1"><Target className="h-3 w-3" /> {task.project}</span>
-                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> Due {task.deadline}</span>
-                      <span className="flex items-center gap-1"><Timer className="h-3 w-3" /> {task.loggedHours}h / {task.estHours}h logged</span>
-                    </div>
-                  </div>
-
-                  {/* Progress */}
-                  <div className="lg:w-40 space-y-2">
-                    <div className="flex justify-between text-[10px] font-bold text-muted-foreground">
-                      <span>Time Logged</span>
-                      <span className="text-indigo-600">{Math.round((task.loggedHours / task.estHours) * 100)}%</span>
-                    </div>
-                    <Progress value={(task.loggedHours / task.estHours) * 100} className={`h-1.5 rounded-full ${task.status === 'Delayed' ? '[&>div]:bg-rose-500' : task.loggedHours >= task.estHours ? '[&>div]:bg-emerald-500' : '[&>div]:bg-indigo-600'}`} />
-                    <p className="text-[9px] text-muted-foreground text-right">{task.loggedHours}h logged</p>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    {task.status !== "Completed" && (
-                      <Button size="sm" className="h-9 rounded-xl gap-1.5 bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 text-[11px] font-bold border-none transition-all active:scale-95"
-                        onClick={() => navigate("/member/time")}>
-                        <Play className="h-3 w-3" /> Start
-                      </Button>
-                    )}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl"><MoreVertical className="h-4 w-4" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="rounded-2xl border-none shadow-2xl p-1.5 w-44">
-                        <DropdownMenuItem className="rounded-xl gap-2 py-2 text-xs font-bold cursor-pointer" onClick={() => navigate("/member/updates")}>
-                          <Eye className="h-3.5 w-3.5" /> Update Status
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="rounded-xl gap-2 py-2 text-xs font-bold cursor-pointer" onClick={() => navigate("/member/time")}>
-                          <Clock className="h-3.5 w-3.5" /> Log Time
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="rounded-xl gap-2 py-2 text-xs font-bold cursor-pointer text-emerald-600" onClick={() => handleStatusUpdate(task.name, "Completed")}>
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Mark Complete
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator className="my-1 opacity-50" />
-                        <DropdownMenuItem className="rounded-xl gap-2 py-2 text-xs font-bold cursor-pointer text-indigo-600 focus:bg-indigo-50" onClick={() => handleOpenDocs(task.project)}>
-                          <FileText className="h-3.5 w-3.5" /> Project Documents
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+      {/* Main Task List */}
+      <Card className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-xl overflow-hidden border-t-2 border-indigo-600 border border-slate-100">
+            <CardHeader className="p-4 md:p-5 pb-3 border-b border-slate-50 dark:border-slate-800/50">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                   <div className="flex items-center gap-2.5">
+                      <div className="h-7 w-7 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg flex items-center justify-center text-indigo-600 shadow-sm"><ListTodo size={14}/></div>
+                      <div>
+                         <CardTitle className="text-xs font-black uppercase tracking-tight leading-none">TASK EXECUTION QUEUE</CardTitle>
+                         <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground mt-0.5">{myTasks.length} allocated nodes</p>
+                      </div>
+                   </div>
+                   <Badge className="bg-indigo-600 text-white border-none px-2.5 py-0.5 rounded-md font-black text-[9px] uppercase tracking-tight">ACTIVE</Badge>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-
-        {filtered.length === 0 && (
-          <div className="py-16 text-center space-y-3">
-            <div className="h-16 w-16 rounded-full bg-secondary/50 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="h-8 w-8 text-muted-foreground/30" />
-            </div>
-            <p className="text-sm font-bold text-muted-foreground">No tasks match your filter.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Project Documents Modal for Team Members */}
-      <Dialog open={isDocsModalOpen} onOpenChange={setIsDocsModalOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-[2rem] p-0 border-none shadow-2xl overflow-hidden bg-white">
-          <DialogHeader className="p-8 bg-indigo-600 text-white relative">
-            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-              <FileText size={120} />
-            </div>
-            <DialogTitle className="text-xl font-bold flex items-center gap-3"><FileText className="h-5 w-5" /> Project Repository</DialogTitle>
-            <DialogDescription className="text-indigo-100/70 font-medium mt-1">Viewing all tactical assets for {selectedProjectForDocs}.</DialogDescription>
-          </DialogHeader>
-          <div className="p-8 space-y-4">
-             <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
-                {documents.filter(d => d.projectId === selectedProjectForDocs || d.projectName === selectedProjectForDocs).length === 0 ? (
-                  <div className="py-12 text-center space-y-4">
-                     <div className="h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto border border-slate-100">
-                        <FileText className="h-8 w-8 text-slate-300" />
-                     </div>
-                     <p className="text-sm font-bold text-slate-400">No documents found for this project stream.</p>
-                  </div>
-                ) : (
-                  documents.filter(d => d.projectId === selectedProjectForDocs || d.projectName === selectedProjectForDocs).map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 shadow-sm hover:border-indigo-200 transition-all group">
-                       <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
-                             <FileText className="h-5 w-5" />
+            </CardHeader>
+         <CardContent className="p-3 md:p-4 space-y-4">
+            {myTasks.length > 0 ? myTasks.map(task => (
+              <motion.div key={task.id} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                className="p-4 md:p-5 rounded-xl bg-slate-50/50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 hover:border-indigo-100 hover:bg-white dark:hover:bg-slate-800 transition-all shadow-sm group flex flex-col gap-4"
+              >
+                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                       <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-center shrink-0 group-hover:rotate-3 transition-transform"><Target size={18} className="text-slate-900 dark:text-white" /></div>
+                       <div className="space-y-1.5 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                             <h4 className="text-base font-black tracking-tight text-slate-900 dark:text-white uppercase leading-none italic truncate max-w-[240px] md:max-w-md">{task.name}</h4>
+                             <Badge className="bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-indigo-600 font-black text-[6px] px-1.5 py-0.5 uppercase rounded-md tracking-wider shrink-0">
+                                 Risk: {task.deadlineRisk}
+                             </Badge>
                           </div>
-                          <div>
-                            <p className="font-bold text-xs text-slate-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight italic line-clamp-1">{doc.name}</p>
-                            <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-tighter">{doc.uploadedBy} • {doc.uploadDate}</p>
+                          <div className="flex flex-wrap items-center gap-3 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                             <span className="flex items-center gap-1 text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full italic whitespace-nowrap"><Briefcase size={10} /> {task.workType}</span>
+                             <span className="flex items-center gap-1 whitespace-nowrap"><Layout size={10} /> {task.project}</span>
+                             <span className="flex items-center gap-1 whitespace-nowrap text-indigo-600"><Clock size={10} /> {task.deadline}</span>
                           </div>
                        </div>
-                       <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 shrink-0" onClick={() => {
-                          toast.info(`Retrieving binary stream: ${doc.fileName}...`);
-                          setTimeout(() => toast.success(`Acquisition of ${doc.fileName} complete.`), 1000);
-                       }}>
-                          <Download className="h-5 w-5" />
+                    </div>
+                    <div className="flex items-center gap-3 bg-slate-950 p-2.5 md:p-3 rounded-lg shadow-sm text-center border-t-2 border-indigo-600 shrink-0 self-start lg:ml-auto">
+                       <div className="px-3 border-r border-white/5"><p className="text-[6px] font-black text-slate-500 uppercase tracking-widest mb-0.5 italic leading-none">Shift</p><p className="text-base font-black text-indigo-400 leading-none tracking-tighter">{(task.todayHours || 0).toFixed(1)}h</p></div>
+                       <div className="px-3"><p className="text-[6px] font-black text-slate-500 uppercase tracking-widest mb-0.5 italic leading-none">Total</p><p className="text-base font-black text-white leading-none tracking-tighter">{(task.totalWorked || 0).toFixed(1)}h</p></div>
+                    </div>
+                 </div>
+                 
+                 <div className="h-[1px] bg-slate-100 dark:bg-slate-800 w-full" />
+                 
+                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="space-y-1.5 w-full md:w-[220px]">
+                       <div className="flex justify-between items-end">
+                          <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 italic leading-none"><Zap size={8} className="text-amber-500" /> Status</p><p className={`font-black uppercase text-[9px] tracking-widest leading-none ${task.progress === 100 ? 'text-emerald-500' : 'text-indigo-400'}`}>{task.readiness}</p></div>
+                          <p className="text-xl font-black text-indigo-600 italic tracking-tighter leading-none">{task.progress}%</p>
+                       </div>
+                       <Progress value={task.progress} className="h-1 w-full [&>div]:bg-indigo-600" />
+                    </div>
+                    
+                    {/* Quick Actions */}
+                    <div className="grid grid-cols-3 gap-1.5 w-full md:w-auto">
+                       <Button variant="outline" className="h-8 px-3 rounded-md font-black uppercase tracking-widest text-[8px] border-slate-100" onClick={() => navigate("/member/updates")}><PenLine size={12} /> Sync</Button>
+                       <Button variant="outline" className="h-8 px-3 rounded-md font-black uppercase tracking-widest text-[8px] border-slate-100" onClick={() => navigate("/member/time")}><Timer size={12} /> Log</Button>
+                       <Button onClick={() => handleOpenUpdate(task, true)} disabled={task.progress < 100} className="h-8 px-4 rounded-md bg-indigo-600 text-white font-black uppercase tracking-widest text-[8px] shadow-sm italic transition-all hover:bg-black">
+                          Release
                        </Button>
                     </div>
-                  ))
-                )}
-             </div>
-          </div>
-          <div className="p-6 bg-slate-50 flex justify-end">
-             <Button variant="ghost" className="h-10 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500 hover:bg-slate-200" onClick={() => setIsDocsModalOpen(false)}>
-                Close Vault
-             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+                 </div>
+              </motion.div>
+            )) : <div className="py-20 flex flex-col items-center justify-center opacity-10 italic font-black uppercase tracking-[8px] text-slate-400"><Search size={40} className="mb-4"/><p>Queue records null</p></div>}
+         </CardContent>
+      </Card>
+
+      {/* Advanced Sync Modal */}
+      <AnimatePresence>
+        {isUpdateModalOpen && selectedTask && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.98, y: 10 }} animate={{ scale: 1, y: 0 }} className="bg-white dark:bg-slate-900 max-w-4xl w-full max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-slate-100 dark:border-slate-800">
+               <div className="bg-indigo-600 p-6 text-white flex justify-between items-center shrink-0">
+                  <div className="flex items-center gap-6">
+                     <div className="h-10 w-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-md"><Rocket size={20} /></div>
+                     <div className="space-y-0.5">
+                        <h2 className="text-xl font-black uppercase tracking-tighter italic leading-none">{isHandoverMode ? "Phase Handover" : "Tactical Broadcast"}</h2>
+                        <p className="text-indigo-100/60 font-black text-[9px] uppercase tracking-[3px] italic">{selectedTask.name}</p>
+                     </div>
+                  </div>
+                  <button onClick={() => setIsUpdateModalOpen(false)} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-all border border-white/10 shrink-0"><X size={18} /></button>
+               </div>
+               
+               <div className="p-6 md:p-8 space-y-8 overflow-y-auto custom-scrollbar">
+                  {isHandoverMode && (
+                    <div className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-10 py-5 px-6 bg-emerald-50 dark:bg-emerald-950/20 border border-dashed border-emerald-200 dark:border-emerald-800 rounded-xl group">
+                       <div className="text-center space-y-1.5"><p className="text-[7px] font-black uppercase text-emerald-500 tracking-[3px] leading-none">Active Unit</p><Badge className="bg-white dark:bg-slate-900 text-emerald-600 border-none px-4 py-1.5 rounded-lg shadow-sm font-black uppercase text-[10px] italic tracking-widest">{certifiedRole}</Badge></div>
+                       <div className="flex flex-col items-center gap-2"><ArrowRightLeft size={16} className="text-emerald-400 rotate-90 md:rotate-0" /></div>
+                       <div className="text-center space-y-1.5"><p className="text-[7px] font-black uppercase text-emerald-500 tracking-[3px] leading-none">Transmission Node</p><Badge className="bg-emerald-600 text-white border-none px-4 py-1.5 rounded-lg shadow-sm font-black uppercase text-[10px] italic tracking-widest">{nextRole}</Badge></div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {[
+                        { id: "completed", val: tacticalData.completed, set: (v:string) => setTacticalData(p=>({...p,completed:v})), label: "Finalizations", icon: ClipboardCheck, color: "text-indigo-600", req: true },
+                        { id: "pending", val: tacticalData.pending, set: (v:string) => setTacticalData(p=>({...p,pending:v})), label: "Residuals", icon: Clock, color: "text-amber-500", req: false },
+                        { id: "next", val: tacticalData.nextStep, set: (v:string) => setTacticalData(p=>({...p,nextStep:v})), label: "Successor Objective", icon: Zap, color: "text-indigo-600", req: true },
+                        { id: "blockers", val: tacticalData.blockers, set: (v:string) => setTacticalData(p=>({...p,blockers:v})), label: "Obstructions", icon: AlertTriangle, color: "text-rose-600", req: false },
+                        { id: "mgr", val: tacticalData.managerNotes, set: (v:string) => setTacticalData(p=>({...p,managerNotes:v})), label: "HQ Notes", icon: ShieldCheck, color: "text-slate-400", req: false },
+                        { id: "member", val: tacticalData.memberNotes, set: (v:string) => setTacticalData(p=>({...p,memberNotes:v})), label: "Unit Briefing", icon: MessageSquare, color: "text-slate-400", req: false },
+                     ].map((f, i) => (
+                        <div key={i} className="space-y-2">
+                           <Label className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${f.color}`}><f.icon size={12} /> {f.label} {f.req && <span className="opacity-40 text-[6px] font-bold leading-none tracking-tighter">(REQD)</span>}</Label>
+                           <Textarea value={f.val} onChange={e => f.set(e.target.value)} placeholder={`Log hub...`} className="border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 rounded-xl min-h-[100px] text-[10px] font-bold p-4 focus:bg-white dark:focus:bg-slate-800 transition-all shadow-inner custom-scrollbar" />
+                        </div>
+                     ))}
+                  </div>
+
+                  <div className="flex flex-col md:flex-row items-center gap-8 pt-6 border-t border-slate-50 dark:border-slate-800">
+                     <div className="flex-1 space-y-4"><div className="flex justify-between items-end"><p className="text-[9px] font-black uppercase text-slate-400 tracking-[3px] italic leading-none">Sync Capacity</p><p className="text-2xl font-black text-indigo-600 italic tracking-tighter leading-none">{tacticalData.progress}%</p></div><Slider value={[tacticalData.progress]} onValueChange={([v]) => setTacticalData(p=>({...p,progress:v}))} max={100} step={5} className="[&>span]:bg-indigo-600" /></div>
+                     <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto"><Button variant="outline" onClick={() => setIsUpdateModalOpen(false)} className="h-10 px-8 rounded-lg font-black uppercase tracking-widest border-slate-100 text-slate-400 hover:bg-slate-50 transition-all w-full md:w-auto text-[10px]">Abort Sync</Button><Button onClick={handleBroadcastSync} className="h-10 px-10 rounded-lg bg-indigo-600 hover:bg-black text-white font-black uppercase tracking-widest shadow-lg gap-4 transition-all active:scale-95 group w-full md:w-auto text-[10px]"><Send size={16} /> Confirm Release</Button></div>
+                  </div>
+               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
