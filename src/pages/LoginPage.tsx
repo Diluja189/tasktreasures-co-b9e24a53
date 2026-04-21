@@ -7,6 +7,8 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRole, UserRole } from "@/contexts/RoleContext";
 
+import logo from "@/assets/iatt-logo.png";
+
 const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -38,19 +40,23 @@ const LoginPage = () => {
         
         {/* Left Side: Form */}
         <div className="w-full lg:w-[48%] p-5 lg:p-7 flex flex-col">
-          <div className="mb-4">
-            <h2 className="text-[10px] font-bold text-blue-600 uppercase tracking-[0.15em]">
-              Project Tracking Management
+          <div className="mb-6 flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate("/")}>
+            <img src={logo} alt="IATT Logo" className="h-8 w-auto" />
+            <h2 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.15em] leading-none">
+              IATS Production Tracker
             </h2>
           </div>
 
           <div className="flex-1 flex flex-col justify-center max-w-xs w-full mx-auto lg:mx-0">
-            <div className="space-y-1 mb-6">
+            <div className="flex flex-col items-center mb-8 text-center sm:items-start sm:text-left">
+              <div className="h-[120px] w-[120px] mb-6 bg-white rounded-3xl flex items-center justify-center p-4 border border-slate-100 shadow-xl shadow-blue-500/5">
+                <img src={logo} alt="IATT Logo" className="h-full w-auto object-contain" />
+              </div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-display">
                 Login
               </h1>
-              <p className="text-slate-400 text-[10px] leading-relaxed">
-                Welcome to management system.
+              <p className="text-slate-400 text-[10px] leading-relaxed font-medium mt-1">
+                IATS Production Tracker Access
               </p>
             </div>
 

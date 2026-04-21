@@ -48,9 +48,9 @@ export function ManagerDashboard() {
     }),
   [searchTerm, roleFilter]);
 
+    /* â”€â”€ Outer shell: Spacing and alignment refined for premium feel */
   return (
-    /* â”€â”€ Outer shell: 32px padding, light-gray bg handled by index.css --background var */
-    <div className="min-h-full px-8 py-8 space-y-6 max-w-[1440px] mx-auto">
+    <div className="max-w-[1440px] mx-auto space-y-8 pb-12 px-4 pt-6 md:px-8">
 
       {/* â•â• HEADER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <div className="flex items-center justify-between gap-6">
@@ -60,7 +60,7 @@ export function ManagerDashboard() {
           animate={{ opacity: 1, x:  0  }}
           className="flex-1 min-w-0"
         >
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground leading-snug">
+          <h1 className="text-xl font-black tracking-tight text-foreground leading-snug">
             Manager&nbsp;<span className="text-primary">Command Center</span>
           </h1>
         </motion.div>
@@ -79,17 +79,17 @@ export function ManagerDashboard() {
               key={label}
               variant={variant}
               onClick={() => navigate(path)}
-              className="h-10 gap-1.5 px-4 text-sm font-semibold border-border/60 hover:bg-primary/5 hover:border-primary/30 hover:text-primary rounded-lg transition-all"
+              className="h-9 gap-1.5 px-3.5 text-[11px] font-bold border-border/60 hover:bg-primary/5 hover:border-primary/30 hover:text-primary rounded-lg transition-all uppercase tracking-widest"
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-3.5 w-3.5" />
               {label}
             </Button>
           ))}
           <Button
             onClick={() => navigate("/manager/reports")}
-            className="h-10 gap-1.5 px-5 text-sm font-semibold bg-primary hover:bg-primary/90 text-white rounded-lg shadow-md shadow-primary/20 transition-all active:scale-95"
+            className="h-9 gap-1.5 px-4 text-[11px] font-bold bg-primary hover:bg-primary/90 text-white rounded-lg shadow-md shadow-primary/20 transition-all active:scale-95 uppercase tracking-widest"
           >
-            <FileText className="h-4 w-4" />
+            <FileText className="h-3.5 w-3.5" />
             Submit Report
           </Button>
         </motion.div>
@@ -100,32 +100,32 @@ export function ManagerDashboard() {
         {stats.map((stat, i) => (
           <motion.div
             key={stat.title}
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y:  0 }}
             transition={{ delay: i * 0.04 }}
             className="h-full"
           >
-            <Card className="h-full border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl bg-white overflow-hidden group cursor-default">
-              <CardContent className="flex flex-col p-5 h-full">
+            <Card className="h-full border-none shadow-sm hover:shadow-md transition-all duration-300 rounded-xl bg-white overflow-hidden group cursor-default">
+              <CardContent className="flex flex-col p-4 h-full">
                 {/* Icon chip */}
-                <div className={`p-2.5 rounded-lg w-fit ${stat.bg} ${stat.color} mb-4 group-hover:scale-105 transition-transform duration-300`}>
-                  <stat.icon className="h-4.5 w-4.5" style={{ height: 18, width: 18 }} />
+                <div className={`p-2 rounded-lg w-fit ${stat.bg} ${stat.color} mb-3 group-hover:scale-105 transition-transform duration-300`}>
+                  <stat.icon className="h-4 w-4" />
                 </div>
                 {/* Label */}
-                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/70 leading-none mb-2">
+                <p className="text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/60 leading-none mb-1.5">
                   {stat.title}
                 </p>
                 {/* Value */}
-                <h3 className="text-3xl font-extrabold tracking-tight text-foreground leading-none mb-3">
+                <h3 className="text-xl font-black tracking-tight text-foreground leading-none mb-2.5">
                   {stat.value}
                 </h3>
-                {/* Trend pill â€” sits at the same baseline in every card */}
+                {/* Trend pill */}
                 <div className="mt-auto flex items-center gap-1">
                   {stat.alert
-                    ? <AlertCircle className="h-3 w-3 text-rose-500 shrink-0" />
-                    : <TrendingUp  className="h-3 w-3 text-emerald-500 shrink-0" />
+                    ? <AlertCircle className="h-2.5 w-2.5 text-rose-500 shrink-0" />
+                    : <TrendingUp  className="h-2.5 w-2.5 text-emerald-500 shrink-0" />
                   }
-                  <span className="text-[10px] font-semibold text-muted-foreground/70 truncate">
+                  <span className="text-[9px] font-bold text-muted-foreground/60 truncate uppercase tracking-tighter">
                     {stat.trend}
                   </span>
                 </div>
@@ -135,58 +135,58 @@ export function ManagerDashboard() {
         ))}
       </div>
 
-      {/* â•â• CHARTS ROW â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      {/* ══ CHARTS ROW ══════════════════════════════════════════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* â”€â”€ Donut: Task Status Distribution â”€â”€ */}
-        <Card className="flex flex-col border border-border/40 shadow-sm rounded-xl bg-white overflow-hidden" style={{ minHeight: 420 }}>
-          <CardHeader className="px-6 pt-6 pb-0">
+        {/* — Donut: Task Status Distribution — */}
+        <Card className="flex flex-col border-none shadow-sm rounded-2xl bg-white overflow-hidden border-t-8 border-indigo-600" style={{ minHeight: 400 }}>
+          <CardHeader className="px-5 pt-5 pb-0">
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <PieChart className="h-4 w-4 text-primary" />
+              <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <PieChart className="h-3.5 w-3.5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-sm font-bold leading-none">Task Status Distribution</CardTitle>
-                <CardDescription className="text-[11px] mt-0.5">Visual compliance across task states</CardDescription>
+                <CardTitle className="text-xs font-black uppercase tracking-tight leading-none">Task Status Distribution</CardTitle>
+                <CardDescription className="text-[10px] uppercase font-bold tracking-widest mt-0.5">Visual compliance states</CardDescription>
               </div>
             </div>
           </CardHeader>
 
-          <CardContent className="flex-1 flex flex-col px-6 pb-6 pt-4">
+          <CardContent className="flex-1 flex flex-col px-5 pb-5 pt-3">
             {/* Chart */}
-            <div className="relative flex-1" style={{ minHeight: 220 }}>
+            <div className="relative flex-1" style={{ minHeight: 180 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
                   <Pie
                     data={statusDistribution}
                     cx="50%" cy="50%"
-                    innerRadius={62} outerRadius={88}
-                    paddingAngle={6}
+                    innerRadius={55} outerRadius={75}
+                    paddingAngle={4}
                     dataKey="value"
-                    cornerRadius={6}
+                    cornerRadius={4}
                   >
                     {statusDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 8px 24px rgba(0,0,0,0.08)", padding: "8px 14px", fontSize: 11, fontWeight: 700 }}
+                    contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: "6px 10px", fontSize: 10, fontWeight: 800 }}
                   />
                 </RechartsPieChart>
               </ResponsiveContainer>
               {/* Centre label */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-2xl font-extrabold tracking-tight leading-none">48</span>
-                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Total</span>
+                <span className="text-xl font-black tracking-tight leading-none">48</span>
+                <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Total</span>
               </div>
             </div>
 
-            {/* Legend grid â€” 2 Ã— 2, equal width */}
-            <div className="grid grid-cols-2 gap-2 mt-5">
+            {/* Legend grid */}
+            <div className="grid grid-cols-2 gap-1.5 mt-4">
               {statusDistribution.map(item => (
-                <div key={item.name} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50/60 hover:bg-gray-100/60 transition-colors">
-                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                  <span className="text-[10px] font-semibold text-muted-foreground flex-1 truncate">{item.name}</span>
+                <div key={item.name} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gray-50/60 transition-colors">
+                  <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="text-[9px] font-black text-muted-foreground flex-1 truncate uppercase tracking-tighter">{item.name}</span>
                   <span className="text-[10px] font-black text-foreground">{item.value}</span>
                 </div>
               ))}
@@ -194,53 +194,53 @@ export function ManagerDashboard() {
           </CardContent>
         </Card>
 
-        {/* â”€â”€ Bar: Team Efficiency Audit â”€â”€ */}
-        <Card className="flex flex-col border border-border/40 shadow-sm rounded-xl bg-white overflow-hidden" style={{ minHeight: 420 }}>
-          <CardHeader className="px-6 pt-6 pb-0">
+        {/* — Bar: Team Efficiency Audit — */}
+        <Card className="flex flex-col border-none shadow-sm rounded-2xl bg-white overflow-hidden border-t-8 border-emerald-500" style={{ minHeight: 400 }}>
+          <CardHeader className="px-5 pt-5 pb-0">
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
+              <div className="h-7 w-7 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
               </div>
               <div>
-                <CardTitle className="text-sm font-bold leading-none">Team Efficiency Audit</CardTitle>
-                <CardDescription className="text-[11px] mt-0.5">Expected vs. Actual performance comparison</CardDescription>
+                <CardTitle className="text-xs font-black uppercase tracking-tight leading-none">Team Efficiency Audit</CardTitle>
+                <CardDescription className="text-[10px] uppercase font-bold tracking-widest mt-0.5">Benchmark comparison</CardDescription>
               </div>
             </div>
           </CardHeader>
 
-          <CardContent className="flex-1 flex flex-col px-6 pb-6 pt-4">
-            <div className="flex-1" style={{ minHeight: 220 }}>
+          <CardContent className="flex-1 flex flex-col px-5 pb-5 pt-3">
+            <div className="flex-1" style={{ minHeight: 180 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={teamEfficiencyAuditData} barGap={4}>
+                <BarChart data={teamEfficiencyAuditData} barGap={3}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis
                     dataKey="name"
-                    fontSize={10} fontWeight={600} tickLine={false} axisLine={false}
-                    tick={{ fill: "#94a3b8" }} dy={8}
+                    fontSize={9} fontWeight={800} tickLine={false} axisLine={false}
+                    tick={{ fill: "#94a3b8" }} dy={6}
                   />
                   <YAxis
-                    fontSize={10} fontWeight={600} tickLine={false} axisLine={false}
+                    fontSize={9} fontWeight={800} tickLine={false} axisLine={false}
                     tick={{ fill: "#94a3b8" }} domain={[0, 110]} tickCount={6}
                   />
                   <Tooltip
                     cursor={{ fill: "#f8fafc" }}
-                    contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 8px 24px rgba(0,0,0,0.08)", fontSize: 11, fontWeight: 700 }}
+                    contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: 10, fontWeight: 800 }}
                   />
-                  <Bar dataKey="actual"    name="Actual"    fill="hsl(var(--primary))" radius={[4,4,0,0]} barSize={18} />
-                  <Bar dataKey="estimated" name="Target"    fill="#e2e8f0"              radius={[4,4,0,0]} barSize={18} />
+                  <Bar dataKey="actual"    name="Actual"    fill="hsl(var(--primary))" radius={[3,3,0,0]} barSize={14} />
+                  <Bar dataKey="estimated" name="Target"    fill="#f1f5f9"              radius={[3,3,0,0]} barSize={14} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
 
             {/* Legend */}
-            <div className="flex items-center justify-center gap-6 mt-5">
+            <div className="flex items-center justify-center gap-5 mt-4">
               {[
-                { color: "hsl(var(--primary))", label: "Actual Performance" },
-                { color: "#e2e8f0",             label: "Target Benchmark"  },
+                { color: "hsl(var(--primary))", label: "Actual" },
+                { color: "#f1f5f9",             label: "Target"  },
               ].map(l => (
-                <div key={l.label} className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded shrink-0" style={{ backgroundColor: l.color }} />
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{l.label}</span>
+                <div key={l.label} className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded shrink-0" style={{ backgroundColor: l.color }} />
+                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{l.label}</span>
                 </div>
               ))}
             </div>
@@ -248,29 +248,29 @@ export function ManagerDashboard() {
         </Card>
       </div>
 
-      {/* â•â• TEAM PERFORMANCE TABLE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
-      <Card className="border border-border/40 shadow-sm rounded-xl bg-white overflow-hidden">
+      {/* ══ TEAM PERFORMANCE TABLE ══════════════════════════════════════════════ */}
+      <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden border border-border/40">
         {/* Table header with controls */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/30">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border/30">
           <div>
-            <h2 className="text-base font-bold text-foreground">Team Performance Audit</h2>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Real-time individual accountability tracking</p>
+            <h2 className="text-sm font-black uppercase tracking-tight text-foreground">Performance Audit</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">Real-time accountability tracking</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
               <Input
-                placeholder="Search member..."
+                placeholder="Search..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-8 h-9 w-52 text-sm rounded-lg bg-gray-50 border-border/40 focus-visible:ring-1 focus-visible:ring-primary/30 font-medium"
+                className="pl-7 h-8 w-40 text-[11px] rounded-lg bg-gray-50 border-border/40 font-bold uppercase tracking-widest placeholder:lowercase"
               />
             </div>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="h-9 w-28 text-[11px] rounded-lg bg-gray-50 border-border/40 font-semibold uppercase tracking-wide">
+              <SelectTrigger className="h-8 w-24 text-[9px] rounded-lg bg-gray-50 border-border/40 font-black uppercase tracking-[0.1em]">
                 <SelectValue placeholder="Role" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-none shadow-xl text-sm">
+              <SelectContent className="rounded-lg border-none shadow-xl text-[10px] font-bold uppercase tracking-widest">
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="developer">Developer</SelectItem>
                 <SelectItem value="designer">Designer</SelectItem>
@@ -284,10 +284,10 @@ export function ManagerDashboard() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-border/30 bg-gray-50/40">
-                {["Member",  "Role",  "Load (A / C / P)",  "Efficiency",  "Health"].map((h, i) => (
+                {["Member",  "Role",  "Load (A/C/P)",  "Efficiency",  "Health"].map((h, i) => (
                   <th
                     key={h}
-                    className={`py-3 px-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap ${
+                    className={`py-2 px-5 text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground whitespace-nowrap ${
                       i === 2 || i === 3 ? "text-center" : i === 4 ? "text-right" : ""
                     }`}
                   >
@@ -305,54 +305,54 @@ export function ManagerDashboard() {
                 return (
                   <tr key={member.name} className="hover:bg-primary/[0.018] transition-colors group">
                     {/* Member */}
-                    <td className="py-4 px-6">
+                    <td className="py-2 px-5">
                       <div className="flex items-center gap-3">
                         <div className="relative shrink-0">
-                          <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
-                            <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-black">
+                          <Avatar className="h-8 w-8 border-2 border-white shadow-sm">
+                            <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-black">
                               {member.name.split(" ").map(n => n[0]).join("")}
                             </AvatarFallback>
                           </Avatar>
-                          <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${dotColor}`} />
+                          <span className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-white ${dotColor}`} />
                         </div>
                         <div className="min-w-0">
-                          <span className="block text-sm font-semibold leading-tight group-hover:text-primary transition-colors truncate">
+                          <span className="block text-xs font-black leading-tight group-hover:text-primary transition-colors truncate uppercase italic">
                             {member.name}
                           </span>
-                          <span className="block text-[10px] font-medium text-muted-foreground uppercase tracking-widest truncate">
+                          <span className="block text-[9px] font-bold text-muted-foreground uppercase tracking-widest truncate mt-0.5">
                             {member.project}
                           </span>
                         </div>
                       </div>
                     </td>
                     {/* Role */}
-                    <td className="py-4 px-6">
-                      <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0.5 rounded-md border-border/50 text-muted-foreground">
+                    <td className="py-2 px-5">
+                      <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded border-border/40 text-muted-foreground">
                         {member.role}
                       </Badge>
                     </td>
                     {/* Load */}
-                    <td className="py-4 px-6 text-center">
-                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
+                    <td className="py-2 px-5 text-center">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest">
                         <span className="text-muted-foreground">{member.assigned}</span>
-                        <ArrowRight className="h-3 w-3 text-border" />
+                        <ArrowRight className="h-2.5 w-2.5 text-border opacity-50" />
                         <span className="text-primary">{member.completed}</span>
-                        <ArrowRight className="h-3 w-3 text-border" />
+                        <ArrowRight className="h-2.5 w-2.5 text-border opacity-50" />
                         <span className="text-amber-500">{member.pending}</span>
                       </span>
                     </td>
                     {/* Efficiency */}
-                    <td className="py-4 px-6 text-center">
-                      <div className="inline-flex flex-col items-center gap-1.5 w-20">
-                        <span className={`text-sm font-extrabold ${effColor}`}>{eff}%</span>
+                    <td className="py-2 px-5 text-center">
+                      <div className="inline-flex flex-col items-center gap-1 w-16">
+                        <span className={`text-[11px] font-black ${effColor} italic tracking-tighter`}>{eff}%</span>
                         <div className="h-1 w-full rounded-full bg-gray-100 overflow-hidden">
                           <div className={`h-full rounded-full ${barColor}`} style={{ width: `${eff}%` }} />
                         </div>
                       </div>
                     </td>
                     {/* Health */}
-                    <td className="py-4 px-6 text-right">
-                      <span className={`inline-block text-[10px] font-bold px-2.5 py-1 rounded-full ${statusBadge(member.status)}`}>
+                    <td className="py-2 px-5 text-right">
+                      <span className={`inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${statusBadge(member.status)}`}>
                         {member.status}
                       </span>
                     </td>
@@ -364,13 +364,13 @@ export function ManagerDashboard() {
         </div>
 
         {/* Table footer */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-border/30 bg-gray-50/30">
-          <span className="text-[10px] font-medium text-muted-foreground">
-            Showing {filteredData.length} of {performanceData.length} members
+        <div className="flex items-center justify-between px-5 py-2 border-t border-border/30 bg-gray-50/30">
+          <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground opacity-60">
+            Total Nodes: {performanceData.length}
           </span>
-          <Button variant="ghost" size="sm" className="text-[10px] font-bold text-primary hover:bg-primary/5 rounded-lg gap-1.5 h-8 uppercase tracking-wider group">
-            Detailed Audit
-            <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+          <Button variant="ghost" size="sm" className="text-[9px] font-black text-primary hover:bg-primary/5 rounded-lg gap-1.5 h-7 uppercase tracking-widest group">
+            Audit Detail
+            <ArrowRight className="h-2.5 w-2.5 group-hover:translate-x-0.5 transition-transform" />
           </Button>
         </div>
       </Card>

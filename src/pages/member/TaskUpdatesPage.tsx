@@ -1,394 +1,243 @@
 import { useState, useEffect, useMemo } from "react";
-import {
-  CheckCircle2, Clock, AlertTriangle, PenLine,
-  Save, ChevronRight, Target, Calendar, FileText,
-  SlidersHorizontal, ArrowUpRight
+import { 
+  PenLine, Send, Clock, BookOpen, 
+  ChevronRight, ArrowRight, CheckCircle2, 
+  Activity, Timer, AlertCircle, ShieldCheck, 
+  Briefcase, Target, ListTodo, RefreshCw, Rocket,
+  Search, ListFilter, ClipboardList, Layers, Network,
+  Clock3, Lock, Radio, MessageSquare, AlertTriangle, X,
+  ArrowUpRight, BadgeCheck
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
-
 import { useRole } from "@/contexts/RoleContext";
+import { useNavigate } from "react-router-dom";
 
-const statusOptions = [
-  { value: "Not Started", label: "Not Started", color: "bg-slate-400/10 text-slate-500", icon: Clock },
-  { value: "In Progress", label: "In Progress", color: "bg-indigo-500/10 text-indigo-600", icon: SlidersHorizontal },
-  { value: "Completed", label: "Completed", color: "bg-emerald-500/10 text-emerald-600", icon: CheckCircle2 },
-  { value: "Delayed", label: "Delayed", color: "bg-rose-500/10 text-rose-600", icon: AlertTriangle },
-];
-
-type StatusKey = "Not Started" | "In Progress" | "Completed" | "Delayed";
-const statusBadge: Record<StatusKey, string> = {
-  "Not Started": "bg-slate-400/10 text-slate-500 border-none",
-  "In Progress": "bg-indigo-500/10 text-indigo-600 border-none",
-  "Completed": "bg-emerald-500/10 text-emerald-600 border-none",
-  "Delayed": "bg-rose-500/10 text-rose-600 border-none",
+const STORAGE_KEYS = {
+  TASKS: "app_member_tasks_store",
+  UPDATES: "app_member_updates_store",
+  CERTIFIED_ROLE: "app_certified_member_role"
 };
+
+type MemberRole = "Designer" | "Frontend Developer" | "Backend Developer" | "Tester" | "Bug Fixer";
 
 export default function TaskUpdatesPage() {
   const { currentUser } = useRole();
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<any[]>([]);
-
-  // Load Tasks from shared persistence
-  useState(() => {
-    const loadTasks = () => {
-      const savedTasks = localStorage.getItem("app_tasks_persistence");
-      if (savedTasks) setTasks(JSON.parse(savedTasks));
-    };
-    loadTasks();
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === "app_tasks_persistence") loadTasks();
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+  const [updates, setUpdates] = useState<any[]>([]);
+  const [certifiedRole] = useState<MemberRole>(() => {
+     return (localStorage.getItem(STORAGE_KEYS.CERTIFIED_ROLE) as MemberRole) || (currentUser.name.includes("Backend") ? "Backend Developer" : "Designer");
   });
 
-  const assignedTasks = tasks;
-
-  // Derive recent updates from our assigned tasks' histories
-  const recentUpdates = assignedTasks
-    .flatMap(t => (t.history || []).map((h: any) => ({ ...h, task: t.name })))
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 5);
-
-  const [projects, setProjectsList] = useState<any[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState("All");
-  const [manualTaskName, setManualTaskName] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedTaskId, setSelectedTaskId] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [hoursSpent, setHoursSpent] = useState("1.0");
   const [progress, setProgress] = useState(50);
-  const [notes, setNotes] = useState("");
-  const [delayReason, setDelayReason] = useState("");
-  const [completionSummary, setCompletionSummary] = useState("");
+  const [completedWork, setCompletedWork] = useState("");
+  const [pendingWork, setPendingWork] = useState("");
+  const [nextStep, setNextStep] = useState("");
+  const [notesToManager, setNotesToManager] = useState("");
+  const [notesToNextMember, setNotesToNextMember] = useState("");
+  const [blockers, setBlockers] = useState("");
 
   useEffect(() => {
-    const loadProjects = () => {
-      const persisted = localStorage.getItem("app_projects_persistence");
-      setProjectsList(persisted ? JSON.parse(persisted) : []);
-    };
-    loadProjects();
-    window.addEventListener("storage", loadProjects);
-    return () => window.removeEventListener("storage", loadProjects);
+    const savedTasks = JSON.parse(localStorage.getItem(STORAGE_KEYS.TASKS) || "[]");
+    setTasks(savedTasks);
+    const savedUpdates = JSON.parse(localStorage.getItem(STORAGE_KEYS.UPDATES) || "[]");
+    setUpdates(savedUpdates);
   }, []);
 
-  const filteredTasks = useMemo(() => {
-    if (selectedProjectId === "All") return tasks;
-    return tasks.filter(t => (t.project === selectedProjectId || t.projectId === selectedProjectId));
-  }, [tasks, selectedProjectId]);
+  const myTasks = useMemo(() => tasks.filter(t => t.assignedRole === certifiedRole), [tasks, certifiedRole]);
+  const activeTask = useMemo(() => myTasks.find(t => t.id === selectedTaskId), [myTasks, selectedTaskId]);
 
-  const isDelayed = selectedStatus === "Delayed";
-  const isCompleted = selectedStatus === "Completed";
-  const canSubmit = manualTaskName.trim() !== "" && selectedStatus !== "";
+  const totalHours = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return updates.filter(u => u.date === today).reduce((acc, u) => acc + parseFloat(u.hours || 0), 0);
+  }, [updates]);
 
-  const handleSubmit = (e?: React.FormEvent | React.MouseEvent) => {
-    if (e && 'preventDefault' in e) e.preventDefault();
-    
-    if (!canSubmit) {
-      toast.error("Please identify your work and status before updating.");
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTaskId) {
+      toast.error("Security Violation: Protocol ID must be authorized.");
       return;
     }
-
-    try {
-      const finalProgress = selectedStatus === "Completed" ? 100 : progress;
-      const finalNote = notes || "Standard operational update.";
-
-      const timestamp = new Date().toLocaleString();
-      const updateEntry = {
-        status: selectedStatus || "In Progress",
-        progress: finalProgress,
-        note: finalNote,
-        updatedAt: timestamp,
-        updatedBy: currentUser.name,
-        role: "Backend Developer",
-        projectName: selectedProjectId === "All" ? "Uncategorized" : selectedProjectId
-      };
-
-      // Since it's manual, we'll create a standalone work unit record for the manager
-      const manualTask = {
-        id: `M-TSK-${Math.floor(1000+Math.random()*9000)}`,
-        name: manualTaskName,
-        project: updateEntry.projectName,
-        assignee: currentUser.name,
-        status: selectedStatus,
-        progress: finalProgress,
-        latestUpdate: updateEntry,
-        history: [updateEntry]
-      };
-
-      const persisted = localStorage.getItem("app_tasks_persistence");
-      const currentTasks = persisted ? JSON.parse(persisted) : [];
-      const updatedTasks = [manualTask, ...currentTasks];
-
-      localStorage.setItem("app_tasks_persistence", JSON.stringify(updatedTasks));
-      setTasks(updatedTasks);
-      window.dispatchEvent(new Event("storage"));
-
-      toast.success(`Record for "${manualTaskName}" successfully synchronized.`);
-
-      // Cleanup
-      setManualTaskName("");
-      setSelectedStatus("");
-      setProgress(50);
-      setNotes("");
-      setDelayReason("");
-      setCompletionSummary("");
-      
-    } catch (error) {
-      console.error("Submission Error:", error);
-      toast.error("Failed to save update. Please try again.");
-    }
+    const newUpdate = {
+      id: Math.random().toString(36).substr(2, 9),
+      taskId: selectedTaskId,
+      taskName: activeTask?.name,
+      date,
+      hours: hoursSpent,
+      progress,
+      completedWork,
+      pendingWork,
+      nextStep,
+      notesToManager,
+      notesToNextMember,
+      blockers,
+      timestamp: Date.now()
+    };
+    const updated = [newUpdate, ...updates];
+    setUpdates(updated);
+    localStorage.setItem(STORAGE_KEYS.UPDATES, JSON.stringify(updated));
+    toast.success(`Tactical Broadcast Synchronized for ${activeTask?.name}`);
+    setCompletedWork(""); setPendingWork(""); setNextStep(""); setNotesToManager(""); setNotesToNextMember(""); setBlockers("");
   };
 
   return (
-    <div className="space-y-8 pb-10">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-          Task Updates
-        </h1>
-        <p className="text-muted-foreground mt-1">Report your progress, flag blockers, and mark tasks complete.</p>
+    <div className="max-w-[1240px] mx-auto space-y-4 pb-8 px-4 pt-4 md:px-6">
+      {/* HEADER HUD */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-950 p-3 md:p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-5 opacity-[0.03] pointer-events-none text-indigo-600"><Radio size={120} /></div>
+        <div className="flex items-center gap-3 md:gap-4 relative z-10">
+           <div className="h-9 w-9 bg-indigo-600 rounded-lg shadow-xl flex items-center justify-center text-white shrink-0"><PenLine size={18} /></div>
+           <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                 <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.15em] leading-none">Standard User</p>
+                 <div className="h-0.5 w-0.5 rounded-full bg-slate-200" />
+                 <Badge className="bg-rose-500 text-white border-none font-black text-[9px] px-2 py-0.5 uppercase tracking-tight flex items-center gap-1 shrink-0"><Lock size={8} /> Certified</Badge>
+              </div>
+              <div className="mt-1.5 flex items-center gap-2.5 overflow-x-auto no-scrollbar">
+                 <h1 className="text-xl font-black tracking-tight text-foreground uppercase leading-none">TACTICAL REPORTING</h1>
+                 <Badge className="bg-indigo-600 text-white border-none font-black text-[9px] uppercase tracking-tight px-2.5 py-0.5 rounded-full whitespace-nowrap">{certifiedRole}</Badge>
+                 <div className="h-0.5 w-0.5 rounded-full bg-slate-200 shrink-0" />
+                 <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.15em] whitespace-nowrap">Session: <span className="text-primary font-black">{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></p>
+              </div>
+           </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Update Form */}
-        <div className="lg:col-span-7">
-          <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden">
-            <CardHeader className="bg-indigo-600 p-6 text-white border-none">
-              <CardTitle className="text-xl font-bold flex items-center gap-3">
-                <PenLine className="h-5 w-5" /> Submit Task Update
-              </CardTitle>
-              <CardDescription className="text-indigo-100/70">
-                Select a task, set its current status, and add your progress notes.
-              </CardDescription>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-8">
+          <Card className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-xl overflow-hidden border-t-2 border-indigo-600 border border-slate-100 relative">
+            <CardHeader className="p-4 md:p-5 border-b border-slate-50 dark:border-slate-800/50">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                   <div className="flex items-center gap-3">
+                      <div className="h-7 w-7 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg flex items-center justify-center text-indigo-600 shadow-sm"><ClipboardList size={14}/></div>
+                      <CardTitle className="text-xs font-black tracking-tight uppercase leading-none">BROADCAST ENTRY</CardTitle>
+                   </div>
+                   <Badge className="bg-indigo-600 text-white border-none px-2.5 py-0.5 rounded-md font-black text-[9px] uppercase tracking-tight shadow-sm">VALID</Badge>
+                </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-4 md:p-5 space-y-6">
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest text-indigo-600">Step 1: Link to Project</Label>
-                  <Select value={selectedProjectId} onValueChange={(val) => {
-                    setSelectedProjectId(val);
-                  }}>
-                    <SelectTrigger className="h-12 rounded-2xl border-none bg-indigo-50/50 border border-indigo-100 font-bold text-sm">
-                      <SelectValue placeholder="Choose a project..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-none shadow-2xl p-1.5">
-                      <SelectItem value="All" className="rounded-xl py-3 cursor-pointer tracking-wider">Uncategorized / Independent Work</SelectItem>
-                      {projects.map(p => (
-                        <SelectItem key={p.id} value={p.name} className="rounded-xl py-3 cursor-pointer font-bold">
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Step 2: Role & Task (Only visible after project selection) */}
-                <AnimatePresence>
-                  {selectedProjectId !== "All" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-6 pt-4 border-t border-indigo-100/50 overflow-hidden"
-                    >
-                      <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">Role Identification</p>
-                          <Badge className="mt-1 bg-indigo-600 text-white border-none text-[9px] font-black px-2 py-0.5 uppercase tracking-tighter">
-                            Backend Developer
-                          </Badge>
-                        </div>
-                        <div className="text-right">
-                        </div>
+                
+                <div className="p-4 md:p-5 rounded-lg bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/50 space-y-4">
+                   <p className="text-[9px] font-bold uppercase text-indigo-500 tracking-[0.15em] leading-none">Metadata</p>
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1">
+                         <Label className="text-[9px] font-bold uppercase text-indigo-600 tracking-[0.15em] ml-1">Date</Label>
+                         <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-9 rounded-md border-slate-200 bg-white font-bold text-[9px] uppercase" />
                       </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest text-indigo-600 font-bold tracking-tighter">Step 3: Manual Task Type</Label>
-                        <Input 
-                          placeholder="e.g. Optimized Auth Middleware" 
-                          className="h-12 rounded-2xl border-none bg-secondary/30 font-bold text-sm"
-                          value={manualTaskName}
-                          onChange={(e) => setManualTaskName(e.target.value)}
-                        />
+                      <div className="space-y-1">
+                         <Label className="text-[9px] font-bold uppercase text-indigo-600 tracking-[0.15em] ml-1">Node</Label>
+                         <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
+                            <SelectTrigger className="h-9 rounded-md border-slate-200 bg-white font-black text-[9px] uppercase">
+                               <SelectValue placeholder="Protocol..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-lg border-slate-200"><div className="p-1 space-y-0.5">{myTasks.map(t => (<SelectItem key={t.id} value={t.id} className="rounded-md font-bold py-1.5 uppercase text-[9px]">{t.name}</SelectItem>))}</div></SelectContent>
+                         </Select>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Status Selection */}
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">New Status</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {statusOptions.map(opt => {
-                      const Icon = opt.icon;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => {
-                            setSelectedStatus(opt.value);
-                            if (opt.value === "Completed") setProgress(100);
-                          }}
-                          className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 text-left transition-all cursor-pointer
-                            ${selectedStatus === opt.value
-                              ? 'border-indigo-500 bg-indigo-50 shadow-md'
-                              : 'border-transparent bg-secondary/20 hover:bg-secondary/40'}
-                          `}
-                        >
-                          <div className={`p-1.5 rounded-lg ${opt.color}`}>
-                            <Icon className="h-3.5 w-3.5" />
-                          </div>
-                          <span className="text-xs font-bold">{opt.label}</span>
-                          {selectedStatus === opt.value && (
-                            <CheckCircle2 className="h-3.5 w-3.5 text-indigo-600 ml-auto" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                      <div className="space-y-1">
+                         <Label className="text-[9px] font-bold uppercase text-indigo-600 tracking-[0.15em] ml-1">Hours</Label>
+                         <Input type="number" step="0.5" value={hoursSpent} onChange={e => setHoursSpent(e.target.value)} className="h-9 rounded-md border-slate-200 bg-white font-bold text-[9px] uppercase" />
+                      </div>
+                   </div>
                 </div>
 
-                {/* Progress Slider */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Progress</Label>
-                    <span className="text-sm font-black text-indigo-600">{progress}%</span>
-                  </div>
-                  <Slider
-                    value={[progress]}
-                    onValueChange={([v]) => setProgress(v)}
-                    min={0} max={100} step={5}
-                    className="[&>span]:bg-indigo-600"
-                  />
-                  <div className="flex justify-between text-[9px] text-muted-foreground font-bold">
-                    <span>0%</span><span>50%</span><span>100%</span>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-1.5"><BadgeCheck size={12} className="text-emerald-500"/> Finalizations</Label>
+                      <Textarea value={completedWork} onChange={e => setCompletedWork(e.target.value)} placeholder="Accomplishments..." className="min-h-[80px] rounded-xl border-slate-100 bg-slate-50/50 p-3 text-[9px] font-bold focus:bg-white transition-all shadow-inner custom-scrollbar" />
+                   </div>
+                   <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-1.5"><Clock size={12} className="text-amber-500"/> Residuals</Label>
+                      <Textarea value={pendingWork} onChange={e => setPendingWork(e.target.value)} placeholder="Remaining effort..." className="min-h-[80px] rounded-xl border-slate-100 bg-slate-50/50 p-3 text-[9px] font-bold focus:bg-white transition-all shadow-inner custom-scrollbar" />
+                   </div>
+                   <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-1.5"><ChevronRight size={12} className="text-indigo-600"/> Next Step</Label>
+                      <Textarea value={nextStep} onChange={e => setNextStep(e.target.value)} placeholder="Upcoming milestone..." className="min-h-[80px] rounded-xl border-slate-100 bg-slate-50/50 p-3 text-[9px] font-bold focus:bg-white transition-all shadow-inner custom-scrollbar" />
+                   </div>
+                   <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground flex items-center gap-1.5"><AlertTriangle size={12} className="text-rose-500"/> Obstructions</Label>
+                      <Textarea value={blockers} onChange={e => setBlockers(e.target.value)} placeholder="Bottlenecks..." className="min-h-[80px] rounded-xl border-slate-100 bg-slate-50/50 p-3 text-[9px] font-bold focus:bg-white transition-all shadow-inner custom-scrollbar" />
+                   </div>
                 </div>
 
-                {/* Notes */}
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Work Update / Notes</Label>
-                  <Textarea
-                    placeholder="What did you work on? Any issues or progress to share?"
-                    className="border-none bg-secondary/30 rounded-2xl min-h-[100px] text-sm placeholder:text-muted-foreground/50"
-                    value={notes}
-                    onChange={e => setNotes(e.target.value)}
-                  />
+                <div className="p-4 md:p-5 rounded-lg bg-slate-900 text-white space-y-4 border-t-2 border-indigo-600">
+                   <div className="flex flex-col md:flex-row justify-between items-center gap-3">
+                      <div className="space-y-0.5 text-center md:text-left"><p className="text-[9px] font-bold uppercase text-indigo-400 tracking-[0.15em] leading-none">Broadcast Capacity</p><h5 className="text-xl font-black tracking-tight text-white">{progress}% Complete</h5></div>
+                      <Slider value={[progress]} onValueChange={([v]) => setProgress(v)} max={100} step={5} className="w-full md:w-[220px] [&>span]:bg-indigo-500" />
+                   </div>
+                   <div className="flex flex-col md:flex-row gap-3">
+                      <div className="flex-1 space-y-1.5"><Label className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 ml-1">HQ Annotations</Label><Textarea value={notesToManager} onChange={e => setNotesToManager(e.target.value)} className="bg-white/5 border-white/10 rounded-lg min-h-[60px] text-[9px] font-bold p-3 focus:bg-white/10 text-white"/></div>
+                      <div className="flex-1 space-y-1.5"><Label className="text-[9px] font-bold uppercase tracking-[0.15em] text-slate-400 ml-1">Relay Briefing</Label><Textarea value={notesToNextMember} onChange={e => setNotesToNextMember(e.target.value)} className="bg-white/5 border-white/10 rounded-lg min-h-[60px] text-[9px] font-bold p-3 focus:bg-white/10 text-white"/></div>
+                   </div>
                 </div>
 
-                {/* Delay Reason (conditional) */}
-                <AnimatePresence>
-                  {isDelayed && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-2 overflow-hidden"
-                    >
-                      <Label className="text-[10px] font-black uppercase text-rose-500 tracking-widest flex items-center gap-1.5">
-                        <AlertTriangle className="h-3.5 w-3.5" /> Delay Reason (required)
-                      </Label>
-                      <Textarea
-                        placeholder="What caused the delay? Are you blocked on something?"
-                        className="border-none bg-rose-50/50 border-rose-200 rounded-2xl min-h-[90px] text-sm"
-                        value={delayReason}
-                        onChange={e => setDelayReason(e.target.value)}
-                        required
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Completion Summary (conditional) */}
-                <AnimatePresence>
-                  {isCompleted && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="space-y-2 overflow-hidden"
-                    >
-                      <Label className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-1.5">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Completion Summary
-                      </Label>
-                      <Textarea
-                        placeholder="Brief summary of what was delivered. Any final notes for your manager?"
-                        className="border-none bg-emerald-50/50 rounded-2xl min-h-[90px] text-sm"
-                        value={completionSummary}
-                        onChange={e => setCompletionSummary(e.target.value)}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Submit */}
-                <Button
-                  onClick={handleSubmit}
-                  disabled={!canSubmit}
-                  className={`w-full h-12 rounded-2xl font-bold gap-2 border-none transition-all active:scale-95
-                    ${canSubmit
-                      ? isCompleted
-                        ? 'bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20'
-                        : isDelayed
-                          ? 'bg-rose-600 hover:bg-rose-700 shadow-lg shadow-rose-600/20'
-                          : 'bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20'
-                      : 'opacity-40 cursor-not-allowed bg-secondary'}
-                  `}
-                >
-                  <Save className="h-4 w-4" />
-                  Update
-                </Button>
+                <Button type="submit" className="h-10 md:h-11 w-full rounded-xl bg-indigo-600 hover:bg-black text-white font-black uppercase tracking-tight text-[9px] shadow-lg transition-all group gap-3">Synchronize Protocol Signal <Send size={14} className="group-hover:translate-x-1 transition-transform"/></Button>
               </form>
             </CardContent>
           </Card>
         </div>
 
-        {/* Recent Updates History */}
-        <div className="lg:col-span-5 space-y-5">
-          <Card className="border-none shadow-md bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Recent Updates</CardTitle>
-              <CardDescription>Your last submitted task updates.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-2">
-              {recentUpdates.map((upd, i) => (
-                <motion.div key={i} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
-                  <div className="p-4 rounded-2xl bg-secondary/20 hover:bg-white hover:shadow-md transition-all group space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-bold text-sm truncate group-hover:text-indigo-600 transition-colors">{upd.task}</p>
-                      <Badge className={`${statusBadge[upd.status as StatusKey]} text-[8px] font-black uppercase shrink-0`}>{upd.status}</Badge>
+        <div className="lg:col-span-4 space-y-4">
+          <Card className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-xl overflow-hidden border-t-2 border-amber-500 border border-slate-100">
+            <CardHeader className="p-4 border-b border-slate-50 dark:border-slate-800/50"><div className="flex items-center gap-2.5"><div className="h-7 w-7 bg-amber-50 rounded-lg flex items-center justify-center text-amber-500 shadow-inner"><Activity size={14}/></div><CardTitle className="text-xs font-black uppercase tracking-tight">ACTIVE CONTEXT</CardTitle></div></CardHeader>
+            <CardContent className="p-4 space-y-4">
+               {!selectedTaskId ? (
+                 <div className="py-8 text-center space-y-3 opacity-30 font-bold uppercase text-muted-foreground tracking-[0.15em]"><Search size={24} className="mx-auto"/><p className="text-[9px]">Select Node</p></div>
+               ) : (
+                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                       <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-[0.15em] mb-1.5 leading-none">Stream</p>
+                       <h6 className="font-black text-foreground uppercase text-xs leading-tight">{activeTask?.name}</h6>
                     </div>
-                    <p className="text-[10px] text-muted-foreground italic leading-relaxed">{upd.note}</p>
-                    <p className="text-[9px] font-bold text-muted-foreground/50 flex items-center gap-1">
-                      <Clock className="h-2.5 w-2.5" /> {upd.updatedAt}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
+                    <div className="grid grid-cols-2 gap-2">
+                       <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800 flex flex-col gap-1"><p className="text-[9px] font-bold text-amber-600 uppercase tracking-[0.15em] leading-none">Base</p><p className="text-base font-black text-amber-700 tracking-tight leading-none">{activeTask?.progress}%</p></div>
+                       <div className="p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 flex flex-col gap-1"><p className="text-[9px] font-bold text-indigo-600 uppercase tracking-[0.15em] leading-none">Node</p><p className="text-[9px] font-black text-indigo-800 uppercase tracking-tight leading-none truncate">{activeTask?.project}</p></div>
+                    </div>
+                    <div className="space-y-2">
+                       <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-[0.15em] ml-1">Metadata</p>
+                       <div className="space-y-1">
+                          <div className="flex justify-between items-center p-2.5 bg-slate-50 dark:bg-slate-800/20 rounded-lg"><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.15em] leading-none">Type</span><span className="text-[9px] font-black uppercase text-primary leading-none">{activeTask?.workType}</span></div>
+                          <div className="flex justify-between items-center p-2.5 bg-slate-50 dark:bg-slate-800/20 rounded-lg"><span className="text-[9px] font-bold text-muted-foreground uppercase tracking-[0.15em] leading-none">Risk</span><Badge className="bg-rose-50 dark:bg-rose-900/20 text-rose-600 border-none px-1.5 py-0.5 text-[9px] font-black uppercase tracking-tight">{activeTask?.deadlineRisk}</Badge></div>
+                       </div>
+                    </div>
+                 </motion.div>
+               )}
             </CardContent>
           </Card>
 
-          {/* Quick Tips */}
-          <Card className="border-none shadow-md bg-indigo-600 text-white rounded-3xl overflow-hidden p-6 space-y-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Quick Guide</p>
-            <div className="space-y-3 text-xs">
-              {[
-                { icon: SlidersHorizontal, text: "Update status whenever you make meaningful progress." },
-                { icon: AlertTriangle, text: "Flag delays immediately so your manager can help unblock you." },
-                { icon: CheckCircle2, text: "Add a completion summary when marking a task done." },
-              ].map((tip, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <tip.icon className="h-4 w-4 text-indigo-300 shrink-0 mt-0.5" />
-                  <p className="text-indigo-100/80 leading-relaxed font-medium">{tip.text}</p>
-                </div>
-              ))}
-            </div>
+          <Card className="border-none shadow-sm bg-slate-900 text-white rounded-xl overflow-hidden group">
+            <CardHeader className="p-4 border-b border-white/5"><div className="flex items-center gap-2.5"><div className="h-7 w-7 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg"><BookOpen size={14}/></div><CardTitle className="text-xs font-black uppercase tracking-tight">LATEST BRIEFINGS</CardTitle></div></CardHeader>
+            <CardContent className="p-4">
+               <div className="space-y-3">
+                  {updates.slice(0, 3).map((u, i) => (
+                    <motion.div key={i} className="p-3 rounded-lg bg-white/5 border border-white/5 space-y-1.5 group-hover:bg-white/10 transition-all">
+                       <div className="flex justify-between items-center gap-2">
+                          <p className="text-[9px] font-black uppercase text-indigo-400 tracking-tight truncate leading-none">{u.taskName}</p>
+                          <p className="text-[9px] font-bold text-slate-500 shrink-0 leading-none">{u.date}</p>
+                       </div>
+                       <p className="text-[9px] font-bold text-slate-400 line-clamp-1 leading-relaxed">{u.completedWork || "Void..."}</p>
+                       <div className="flex items-center justify-between pt-0.5">
+                          <Badge className="bg-white/10 text-white/60 border-none px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-tight">{u.hours}h</Badge>
+                          <ChevronRight size={8} className="text-slate-600" />
+                       </div>
+                    </motion.div>
+                  ))}
+                  {updates.length === 0 && <div className="py-6 text-center opacity-20 italic font-black uppercase tracking-[5px] text-slate-400"><p className="text-[7px]">Registry Void</p></div>}
+               </div>
+               <Button variant="outline" onClick={() => navigate("/member/time")} className="w-full mt-4 h-9 rounded-lg border-white/10 bg-transparent text-white font-black uppercase tracking-tight text-[9px] hover:bg-white hover:text-black transition-all gap-1.5">View Full Registry <ArrowUpRight size={10}/></Button>
+            </CardContent>
           </Card>
         </div>
       </div>

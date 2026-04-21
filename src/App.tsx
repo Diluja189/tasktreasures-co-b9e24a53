@@ -95,7 +95,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <RoleProvider>
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <AppLayout>
               <Routes>
                 {/* Core & Admin Routes */}
