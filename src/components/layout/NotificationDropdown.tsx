@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell, CheckCircle2, Clock, AlertTriangle, MessageSquare, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
@@ -23,12 +23,86 @@ export interface AppNotification {
   read: boolean;
 }
 
-const initialNotifications: AppNotification[] = [];
 
 export function NotificationDropdown() {
-  const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [filter, setFilter] = useState<NotificationType | 'all'>('all');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const generateNotifications = () => {
+      const generated: AppNotification[] = [];
+      const tasksStr = localStorage.getItem("app_tasks_persistence");
+      const projectsStr = localStorage.getItem("app_projects_persistence");
+      const reportsStr = localStorage.getItem("app_status_reports_persistence");
+      
+      const tasks = tasksStr ? JSON.parse(tasksStr) : [];
+      const projects = projectsStr ? JSON.parse(projectsStr) : [];
+      const reports = reportsStr ? JSON.parse(reportsStr) : [];
+
+      // 1. Alerts: Delayed or Overdue tasks
+      const delayedTasks = tasks.filter((t: any) => {
+        const isOverdue = t.status !== "Completed" && t.deadline && new Date(t.deadline) < new Date();
+        return t.status === "Delayed" || isOverdue;
+      });
+      delayedTasks.forEach((t: any, idx: number) => {
+        generated.push({
+          id: `alert-${t.id || idx}`,
+          type: 'alert',
+          title: "Critical Task Delay",
+          message: `Task "${t.name}" requires immediate intervention.`,
+          project: t.project,
+          timestamp: "Just now",
+          read: false
+        });
+      });
+
+      // 2. Team: Completed tasks
+      const completedTasks = tasks.filter((t: any) => t.status === "Completed").slice(0, 5);
+      completedTasks.forEach((t: any, idx: number) => {
+        generated.push({
+          id: `team-${t.id || idx}`,
+          type: 'team',
+          title: "Work Finalized",
+          message: `Task "${t.name}" has been completed by ${t.assignee || 'team member'}.`,
+          project: t.project,
+          timestamp: "Recent",
+          read: false
+        });
+      });
+
+      // 3. Admin: Reports and new projects
+      reports.slice(0, 5).forEach((r: any, idx: number) => {
+        generated.push({
+          id: `admin-rep-${idx}`,
+          type: 'admin',
+          title: "Strategic Assessment",
+          message: `New status report submitted.`,
+          project: r.project,
+          timestamp: r.date,
+          read: false
+        });
+      });
+
+      projects.slice(0, 3).forEach((p: any, idx: number) => {
+        generated.push({
+          id: `admin-proj-${p.id || idx}`,
+          type: 'admin',
+          title: "Project Initialized",
+          message: `Operations starting under ${p.manager}.`,
+          project: p.name,
+          timestamp: p.startDate || "Recent",
+          read: true
+        });
+      });
+
+      setNotifications(generated);
+    };
+
+    generateNotifications();
+    window.addEventListener("storage", generateNotifications);
+    return () => window.removeEventListener("storage", generateNotifications);
+  }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
   

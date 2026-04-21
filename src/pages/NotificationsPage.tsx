@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Bell, CheckSquare, FolderKanban, MessageSquare, AlertTriangle, 
@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-type NotificationType = "tasks" | "managers" | "alerts" | "security" | "members";
+type NotificationType = "tasks" | "managers" | "alerts" | "members";
 type Priority = "high" | "medium" | "low";
 
 interface Notification {
@@ -27,14 +27,112 @@ interface Notification {
   link: string;
 }
 
-const initialNotifications: Notification[] = [];
-
 const priorityOrder: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
 
 const NotificationsPage = () => {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activeFilter, setActiveFilter] = useState<string>("All");
+
+  useEffect(() => {
+    const generateNotifications = () => {
+      const generated: Notification[] = [];
+      const tasksStr = localStorage.getItem("app_tasks_persistence");
+      const projectsStr = localStorage.getItem("app_projects_persistence");
+      const reportsStr = localStorage.getItem("app_status_reports_persistence");
+      
+      const tasks = tasksStr ? JSON.parse(tasksStr) : [];
+      const projects = projectsStr ? JSON.parse(projectsStr) : [];
+      const reports = reportsStr ? JSON.parse(reportsStr) : [];
+
+      // 1. Analyze Delayed Tasks
+      const delayedTasks = tasks.filter((t: any) => {
+        const isOverdue = t.status !== "Completed" && t.deadline && new Date(t.deadline) < new Date();
+        return t.status === "Delayed" || isOverdue;
+      });
+      delayedTasks.forEach((t: any, idx: number) => {
+        generated.push({
+          id: `alert-${t.id}-${idx}`,
+          type: "alerts",
+          priority: "high",
+          icon: AlertTriangle,
+          message: `Task delayed: "${t.name}" in project ${t.project}. Immediate intervention required.`,
+          time: "Just now",
+          timestamp: new Date(),
+          read: false,
+          link: "/manager/tasks"
+        });
+      });
+
+      // 2. Analyze Completed Tasks
+      const completedTasks = tasks.filter((t: any) => t.status === "Completed").slice(0, 5);
+      completedTasks.forEach((t: any, idx: number) => {
+        generated.push({
+          id: `task-comp-${t.id}-${idx}`,
+          type: "tasks",
+          priority: "low",
+          icon: CheckCheck,
+          message: `Task finalized: "${t.name}" resolved by ${t.assignee || 'team member'}.`,
+          time: "Recent",
+          timestamp: new Date(Date.now() - Math.random() * 86400000),
+          read: false,
+          link: "/manager/tracking"
+        });
+      });
+
+      // 3. Analyze Status Reports
+      reports.slice(0, 5).forEach((r: any, idx: number) => {
+        generated.push({
+          id: `rep-${idx}`,
+          type: "managers",
+          priority: "medium",
+          icon: ShieldCheck,
+          message: `Strategic Assessment: Submissions received for project "${r.project}".`,
+          time: r.date,
+          timestamp: new Date(Date.now() - Math.random() * 10000000),
+          read: false,
+          link: "/reports"
+        });
+      });
+
+      // 4. Analytics on Projects
+      const newProjects = projects.slice(0, 3);
+      newProjects.forEach((p: any, idx: number) => {
+        generated.push({
+          id: `proj-${p.id}-${idx}`,
+          type: "managers",
+          priority: "medium",
+          icon: FolderKanban,
+          message: `Operations starting: Project "${p.name}" initialized under ${p.manager}.`,
+          time: p.startDate || "Recent",
+          timestamp: new Date(Date.now() - Math.random() * 200000000),
+          read: true,
+          link: "/projects"
+        });
+      });
+
+      // Provide system scan notification if no data
+      if (generated.length === 0) {
+        generated.push({
+          id: "sys-1",
+          type: "alerts",
+          priority: "low",
+          icon: ShieldAlert,
+          message: "System scan complete. All modules are currently stable. No immediate alerts.",
+          time: "Just now",
+          timestamp: new Date(),
+          read: false,
+          link: "/"
+        });
+      }
+
+      setNotifications(generated.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()));
+    };
+
+    generateNotifications();
+    window.addEventListener("storage", generateNotifications);
+    return () => window.removeEventListener("storage", generateNotifications);
+  }, []);
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
   const highPriorityCount = useMemo(() => notifications.filter(n => n.priority === 'high' && !n.read).length, [notifications]);
@@ -61,10 +159,10 @@ const NotificationsPage = () => {
     return b.timestamp.getTime() - a.timestamp.getTime();
   });
 
-  const filters = ["All", "Tasks", "Managers", "Alerts", "Security"];
+  const filters = ["All", "Tasks", "Managers", "Alerts"];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10 pb-20 pt-10 px-6">
+    <div className="max-w-7xl mx-auto space-y-8 pb-20 pt-8 px-6">
       {/* Premium Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
@@ -129,8 +227,8 @@ const NotificationsPage = () => {
             <Zap size={240} className="text-indigo-500" />
          </div>
 
-         <div className="bg-white/5 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden min-h-[500px]">
-            <ScrollArea className="h-[650px] w-full">
+         <div className="bg-white/5 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden min-h-[300px]">
+            <ScrollArea className="h-[400px] w-full">
                <div className="p-4 space-y-3">
                   <AnimatePresence mode="popLayout">
                     {sortedNotifications.length > 0 ? (
@@ -163,7 +261,6 @@ const NotificationsPage = () => {
                             <div className="flex items-center justify-between gap-4 mb-1">
                                <div className="flex items-center gap-2">
                                   <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${
-                                     n.type === 'security' ? 'text-rose-500' : 
                                      n.type === 'alerts' ? 'text-amber-500' : 
                                      'text-indigo-500/70'
                                   }`}>

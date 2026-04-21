@@ -106,9 +106,9 @@ export default function StatusReportsPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* Report Compilation Console */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="xl:col-span-9 space-y-6">
            <Card className="border border-border/50 shadow-sm bg-white rounded-2xl overflow-hidden">
               <CardHeader className="bg-indigo-600 p-6 text-white shrink-0">
                  <div className="flex items-center justify-between">
@@ -124,11 +124,11 @@ export default function StatusReportsPage() {
                     <Badge variant="outline" className="border-white/20 text-white bg-white/5 px-3 py-1 rounded-lg font-bold text-[10px] tracking-widest uppercase">Draft Mode</Badge>
                  </div>
               </CardHeader>
-              <CardContent className="p-6 space-y-8">
-                 <div className="space-y-3">
+              <CardContent className="p-5 space-y-5">
+                 <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Select Active Project</label>
                     <Select value={selectedProject} onValueChange={setSelectedProject}>
-                       <SelectTrigger className="h-12 rounded-xl border border-border/50 bg-slate-50/50 px-4 font-bold text-sm text-slate-700">
+                       <SelectTrigger className="h-10 rounded-xl border border-border/50 bg-slate-50/50 px-4 font-bold text-sm text-slate-700">
                           <SelectValue placeholder="Target Project Stream" />
                        </SelectTrigger>
                        <SelectContent className="rounded-xl border-border/50 shadow-xl">
@@ -148,59 +148,59 @@ export default function StatusReportsPage() {
                          initial={{ opacity: 0, y: 10 }}
                          animate={{ opacity: 1, y: 0 }}
                          exit={{ opacity: 0, scale: 0.98 }}
-                         className="space-y-8"
+                         className="space-y-5"
                        >
                           {/* Telemetry Preview */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                              {[
                                { label: "Finalized", val: projectData.completed, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
                                { label: "Active", val: projectData.inProgress, icon: Clock, color: "text-indigo-600", bg: "bg-indigo-50" },
                                { label: "Risk Delta", val: projectData.delayed, icon: AlertTriangle, color: "text-rose-600", bg: "bg-rose-50" },
                              ].map((stat, i) => (
-                               <div key={i} className={`p-6 rounded-2xl ${stat.bg} border border-border/10 flex flex-col items-center justify-center text-center transition-all hover:shadow-inner`}>
-                                  <stat.icon className={`h-5 w-5 ${stat.color} mb-3`} />
-                                  <p className="text-2xl font-black text-slate-900 leading-none">{stat.val}</p>
-                                  <p className="text-[10px] font-bold uppercase text-slate-400 mt-2 tracking-widest">{stat.label}</p>
+                               <div key={i} className={`p-4 rounded-2xl ${stat.bg} border border-border/10 flex flex-col items-center justify-center text-center transition-all hover:shadow-inner`}>
+                                  <stat.icon className={`h-4 w-4 ${stat.color} mb-1.5`} />
+                                  <p className="text-xl font-black text-slate-900 leading-none">{stat.val}</p>
+                                  <p className="text-[10px] font-bold uppercase text-slate-400 mt-1 tracking-widest">{stat.label}</p>
                                 </div>
                              ))}
                           </div>
 
-                          <div className="space-y-6">
-                             <div className="space-y-3">
+                          <div className="space-y-4">
+                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                                   <Zap className="h-3.5 w-3.5 text-rose-500" /> Risks, Blockers & Impediments
+                                   <Zap className="h-3 w-3 text-rose-500" /> Risks, Blockers & Impediments
                                 </label>
                                 <Textarea 
                                   placeholder="Document any strategic or technical slippage risk..." 
-                                  className="rounded-xl border border-border/50 bg-slate-50/30 min-h-[120px] p-4 text-sm font-semibold text-slate-700 placeholder:text-slate-400"
+                                  className="rounded-xl border border-border/50 bg-slate-50/30 min-h-[70px] p-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400"
                                   value={risks}
                                   onChange={(e) => setRisks(e.target.value)}
                                 />
                              </div>
 
-                             <div className="space-y-3">
+                             <div className="space-y-2">
                                 <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                                   <MessageSquare className="h-3.5 w-3.5 text-indigo-500" /> Executive Summary & Managerial Notes
+                                   <MessageSquare className="h-3 w-3 text-indigo-500" /> Executive Summary & Managerial Notes
                                 </label>
                                 <Textarea 
                                   placeholder="Provide descriptive assessment of current implementation velocity..." 
-                                  className="rounded-xl border border-border/50 bg-slate-50/30 min-h-[150px] p-4 text-sm font-medium text-slate-700 placeholder:text-slate-400"
+                                  className="rounded-xl border border-border/50 bg-slate-50/30 min-h-[70px] p-3 text-sm font-medium text-slate-700 placeholder:text-slate-400"
                                   value={managerNote}
                                   onChange={(e) => setManagerNote(e.target.value)}
                                 />
                              </div>
                           </div>
 
-                          <div className="pt-4 flex flex-col sm:flex-row gap-4">
+                          <div className="pt-2 flex flex-col sm:flex-row gap-3">
                              <Button 
-                               className="flex-1 h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 font-bold text-xs uppercase tracking-widest gap-2"
+                               className="flex-1 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 font-bold text-xs uppercase tracking-widest gap-2"
                                onClick={handleSubmitReport}
                              >
                                 <Send className="h-4 w-4" /> Submit to Admin
                              </Button>
                              <Button 
                                variant="outline" 
-                               className="h-12 px-8 rounded-xl border-border/60 bg-white hover:bg-slate-50 text-slate-600 font-bold text-xs uppercase tracking-widest gap-2"
+                               className="h-10 px-6 rounded-xl border-border/60 bg-white hover:bg-slate-50 text-slate-600 font-bold text-xs uppercase tracking-widest gap-2"
                                onClick={() => toast.info("Exporting Assessment Data...")}
                              >
                                 <Download className="h-4 w-4" /> Export Summary
@@ -224,7 +224,7 @@ export default function StatusReportsPage() {
         </div>
 
         {/* Audit History & Guidelines Sidebar */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="xl:col-span-3 space-y-6">
            <Card className="border border-border/50 shadow-sm bg-white rounded-2xl overflow-hidden">
               <CardHeader className="p-6 border-b border-border/40 flex flex-row items-center justify-between">
                  <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2 leading-none">

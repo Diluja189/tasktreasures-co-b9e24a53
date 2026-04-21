@@ -31,6 +31,7 @@ export default function UsersPage() {
   
   const [dbUsers, setDbUsers] = useState<any[]>([]);
   const [dbProjects, setDbProjects] = useState<any[]>([]);
+  const [dbTasks, setDbTasks] = useState<any[]>([]);
   
   const [searchQuery, setSearchQuery] = useState("");
   const [prjFilter, setPrjFilter] = useState("All");
@@ -45,8 +46,9 @@ export default function UsersPage() {
     const loadData = () => {
       let u = localStorage.getItem("app_users_persistence");
       const p = localStorage.getItem("app_projects_persistence");
+      const t = localStorage.getItem("app_tasks_persistence");
       
-      // Auto-inject dummy structural data
+      // Auto-inject dummy structural data only if truly empty
       if (!u || JSON.parse(u).length === 0) {
          const dummyUsers = [
            { id: "U-01", name: "Designer Team", email: "dt@corp.com", department: "UI/UX", role: "user" },
@@ -60,62 +62,117 @@ export default function UsersPage() {
       
       setDbUsers(u ? JSON.parse(u) : []);
       setDbProjects(p ? JSON.parse(p) : []);
+      setDbTasks(t ? JSON.parse(t) : []);
     };
     loadData();
     window.addEventListener("storage", loadData);
     return () => window.removeEventListener("storage", loadData);
   }, []);
 
-  // 1) Aggregate all stats into rich member objects
-  const richMembers = dbUsers.map(user => {
-    let assignedManagers = new Set<string>();
-    let assignedProjects = new Set<string>();
-    let totalAssigned = 0;
-    let totalCompleted = 0;
-    let totalDelayed = 0;
-    
-    // Scan all projects to see where this user is active
+  // ── Build the full member roster: registered users + discovered from tasks/projects ──
+  const allMemberNames = (() => {
+    const names = new Set<string>();
+    // Registered users
+    dbUsers.forEach(u => { if (u.name) names.add(u.name); });
+    // Discoverable from task assignees
+    dbTasks.forEach(t => { if (t.assignee) names.add(t.assignee); });
+    // Discoverable from project teamMembers
+    dbProjects.forEach(p => {
+      (p.teamMembers || []).forEach((tm: any) => { if (tm.name) names.add(tm.name); });
+    });
+    return Array.from(names);
+  })();
+
+  const richMembers = allMemberNames.map(memberName => {
+    // Find registered user record if it exists
+    const userRecord = dbUsers.find(u => (u.name || "").toLowerCase() === memberName.toLowerCase()) || {};
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // ── Tasks ──
+    const userTasks = dbTasks.filter(
+      t => (t.assignee || "").toLowerCase() === memberName.toLowerCase()
+    );
+    const totalAssigned  = userTasks.length;
+    const completedTasks = userTasks.filter(t => t.status === "Completed" || t.dynamicStatus === "Completed").length;
+    const overdueTasks   = userTasks.filter(t => {
+      if (t.status === "Completed" || t.dynamicStatus === "Completed") return false;
+      const dl = t.deadline ? new Date(t.deadline) : null;
+      if (!dl || isNaN(dl.getTime())) return false;
+      dl.setHours(0, 0, 0, 0);
+      return today > dl;
+    }).length;
+    const pendingTasks = Math.max(0, totalAssigned - completedTasks);
+
+    // ── Projects & Managers from tasks ──
+    const assignedProjects: string[] = Array.from(new Set(userTasks.map((t: any) => t.project).filter(Boolean)));
+    const assignedManagers: string[] = Array.from(new Set(userTasks.map((t: any) => t.manager).filter(Boolean)));
+
+    // ── Also check project.teamMembers[] ──
+    const memberProjectRecords: any[] = [];
     dbProjects.forEach(project => {
-      const tmList = project.teamMembers || [];
-      const foundTm = tmList.find((tm: any) => tm.name === user.name);
-      
+      const foundTm = (project.teamMembers || []).find(
+        (tm: any) => (tm.name || "").toLowerCase() === memberName.toLowerCase()
+      );
       if (foundTm) {
-        if (project.manager) assignedManagers.add(project.manager);
-        if (project.name) assignedProjects.add(project.name);
-        
-        totalAssigned += (foundTm.assignedCount || 1);
-        totalCompleted += (foundTm.completedTasks || 0);
-        totalDelayed += (foundTm.delayedTasks || 0);
+        if (project.name && !assignedProjects.includes(project.name)) assignedProjects.push(project.name);
+        if (project.manager && !assignedManagers.includes(project.manager)) assignedManagers.push(project.manager);
+        memberProjectRecords.push(project);
       }
     });
 
-    const totalPending = Math.max(0, totalAssigned - totalCompleted);
-    const hasActivity = totalAssigned > 0;
-    
+    const hasActivity = totalAssigned > 0 || assignedProjects.length > 0;
+
+    // ── Efficiency: task-based if tasks exist, else project-timeline-based ──
     let efficiency = 0;
-    if (hasActivity) {
-      const mCompRate = (totalCompleted / totalAssigned) * 100;
-      const mOnTimeRate = Math.max(0, 100 - ((totalDelayed / totalAssigned) * 100));
-      // 60% completion rate + 40% on-time metric
-      efficiency = Math.round((mCompRate * 0.6) + (mOnTimeRate * 0.4));
+    if (totalAssigned > 0) {
+      // Task-based efficiency
+      const completionRate = (completedTasks / totalAssigned) * 100;
+      const overduePenalty = (overdueTasks / totalAssigned) * 100 * 0.5;
+      efficiency = Math.min(100, Math.max(0, Math.round(completionRate - overduePenalty)));
+    } else if (memberProjectRecords.length > 0) {
+      // Project-timeline-based efficiency (same formula as project efficiency engine)
+      const projectEffs = memberProjectRecords.map(project => {
+        const startDate   = project.startDate || project.start || project.createdDate;
+        const deadlineDate = project.deadline || project.endDate;
+        if (!startDate || !deadlineDate) return 0;
+        const start = new Date(startDate); start.setHours(0,0,0,0);
+        const end   = new Date(deadlineDate); end.setHours(0,0,0,0);
+        const totalDays = (end.getTime() - start.getTime()) / 86400000;
+        const daysUsed  = (today.getTime() - start.getTime()) / 86400000;
+        if (totalDays <= 0) return 0;
+        const expectedProgress = Math.min(100, Math.max(0, (daysUsed / totalDays) * 100));
+        // With no tasks, actual progress = 0 → efficiency = 0 (at risk)
+        // But if project hasn't started yet (daysUsed <= 0), efficiency = 100 (not yet due)
+        if (daysUsed <= 0) return 100;
+        return 0; // No tasks done yet but time is passing = At Risk
+      });
+      efficiency = Math.round(projectEffs.reduce((a, b) => a + b, 0) / projectEffs.length);
     }
 
     return {
-      ...user,
-      id: user.id || Math.random().toString(),
-      managers: Array.from(assignedManagers).join(', ') || 'Unassigned',
-      projects: Array.from(assignedProjects).join(', ') || 'Unassigned',
-      projectsRaw: Array.from(assignedProjects),
-      managersRaw: Array.from(assignedManagers),
+      ...userRecord,
+      id: userRecord.id || memberName,
+      name: memberName,
+      department: userRecord.department || "Team Member",
+      email: userRecord.email || "",
+      role: userRecord.role || "user",
+      managers: assignedManagers.join(", ") || "Unassigned",
+      projects: assignedProjects.join(", ") || "Unassigned",
+      projectsRaw: assignedProjects,
+      managersRaw: assignedManagers,
       totalAssigned,
-      completedTasks: totalCompleted,
-      pendingTasks: totalPending,
-      delayedTasks: totalDelayed,
+      completedTasks,
+      pendingTasks,
+      delayedTasks: overdueTasks,
       efficiency,
       hasActivity,
       statusIndicator: efficiency >= 80 ? "green" : efficiency >= 50 ? "yellow" : "red"
     };
   });
+
+
 
   // 2) Apply filters
   const filtered = richMembers.filter(m => {

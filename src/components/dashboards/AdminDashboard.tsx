@@ -5,7 +5,8 @@ import {
   BarChart3, Users, Filter, RefreshCw, Eye, 
   ArrowUpRight, TrendingUp, Clock, FileBarChart,
   UserPlus, AlertTriangle, Calendar, GanttChartSquare,
-  History, UserCheck, ShieldAlert, TimerOff, PieChart, ChevronRight
+  History, UserCheck, ShieldAlert, TimerOff, PieChart, ChevronRight,
+  Zap, User
 } from "lucide-react";
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
@@ -19,6 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { calcManagerEfficiency, calcProjectEfficiency, calcMemberEfficiency } from "@/lib/efficiencyEngine";
 
 // Static data still used for charts/risk metrics
 import { 
@@ -34,18 +36,25 @@ export function AdminDashboard() {
   // ── Live data from localStorage ──────────────────────────────────────────
   const [liveProjects, setLiveProjects] = useState<any[]>([]);
   const [liveManagers, setLiveManagers] = useState<any[]>([]);
+  const [liveTasks, setLiveTasks]       = useState<any[]>([]);
 
   const loadData = () => {
     const p = localStorage.getItem("app_projects_persistence");
     const m = localStorage.getItem("app_managers_persistence");
+    const t = localStorage.getItem("app_tasks_persistence");
     setLiveProjects(p ? JSON.parse(p) : []);
     setLiveManagers(m ? JSON.parse(m) : []);
+    setLiveTasks(t ? JSON.parse(t) : []);
   };
 
   useEffect(() => {
     loadData();
     const handler = (e: StorageEvent) => {
-      if (e.key === "app_projects_persistence" || e.key === "app_managers_persistence") {
+      if (
+        e.key === "app_projects_persistence" ||
+        e.key === "app_managers_persistence" ||
+        e.key === "app_tasks_persistence"
+      ) {
         loadData();
       }
     };
@@ -74,14 +83,50 @@ export function AdminDashboard() {
     liveManagers.map(m => ({
       ...m,
       assignedProjects: liveProjects.filter(p => p.manager === m.name),
+      efficiency: calcManagerEfficiency(m, liveProjects, liveTasks),
     })),
-  [liveManagers, liveProjects]);
+  [liveManagers, liveProjects, liveTasks]);
 
   // ── Unassigned count for risk panel ──────────────────────────────────────
   const unassignedCount = liveProjects.filter(p => !p.manager).length;
 
+  // ── Live Manager Performance Data for chart ───────────────────────────────
+  const managerPerformanceData = useMemo(() =>
+    liveManagers.map(m => {
+      const eff = calcManagerEfficiency(m, liveProjects, liveTasks);
+      return {
+        name: (m.name || "").split(" ")[0], // First name for chart label
+        fullName: m.name,
+        score: parseFloat(eff.efficiency.toFixed(1)),
+        status: eff.status,
+        statusColor: eff.statusColor,
+        projectCount: eff.projectCount,
+        fill: eff.statusColor === 'emerald' ? '#10b981' :
+              eff.statusColor === 'amber'   ? '#f59e0b' : '#f43f5e',
+      };
+    }),
+  [liveManagers, liveProjects, liveTasks]);
+
+  // ── Live Status Distribution for pie chart ─────────────────────────
+  const liveStatusDistribution = useMemo(() => {
+    const active    = liveProjects.filter(p => p.status === "Active").length;
+    const completed = liveProjects.filter(p => p.status === "Completed" || p.status === "Finalized").length;
+    const delayed   = liveProjects.filter(p => p.status === "Delayed" || p.status === "Overdue").length;
+    const pending   = liveProjects.filter(p =>
+      !p.status || (p.status !== "Active" && p.status !== "Completed" && p.status !== "Finalized" && p.status !== "Delayed" && p.status !== "Overdue")
+    ).length;
+
+    return [
+      { name: "Active",    value: active,    color: "#10b981" },
+      { name: "Completed", value: completed, color: "#6366f1" },
+      { name: "Delayed",   value: delayed,   color: "#f43f5e" },
+      { name: "Pending",   value: pending,   color: "#f59e0b" },
+    ].filter(item => item.value > 0); // Only show statuses that have projects
+  }, [liveProjects]);
+
   const [selectedManager, setSelectedManager] = useState<any>(null);
   const [selectedProject, setSelectedProject] = useState<any>(null);
+
 
   return (
     <div className="space-y-8 pb-10 pt-5">
@@ -169,10 +214,10 @@ export function AdminDashboard() {
             {managersWithProjects.length > 0 ? (
               <div className="space-y-1 max-h-[450px] overflow-y-auto pr-1">
                 {managersWithProjects.map(manager => {
-                  const isExpanded = selectedManager?.id === manager.id;
+                  const isExpanded = selectedManager?.name === manager.name;
                   return (
                     <motion.div
-                      key={manager.id}
+                      key={manager.id || manager.name}
                       initial={false}
                       animate={{ backgroundColor: isExpanded ? "rgba(243, 232, 255, 1)" : "rgba(255, 255, 255, 0.2)" }}
                       className={`rounded-[16px] border transition-all duration-200 overflow-hidden ${
@@ -205,8 +250,21 @@ export function AdminDashboard() {
                             </p>
                           </div>
                         </div>
-                        <div className={`p-1 rounded-full transition-all duration-300 ${isExpanded ? 'bg-purple-600 text-white rotate-180' : 'bg-indigo-50 text-indigo-600 opacity-60'}`}>
-                          <ChevronRight className="h-3 w-3 rotate-90" />
+                        <div className="flex items-center gap-2">
+                          {/* ── Manager Efficiency Badge ── */}
+                          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black border ${
+                            manager.efficiency.statusColor === 'emerald'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : manager.efficiency.statusColor === 'amber'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-rose-50 text-rose-700 border-rose-200'
+                          }`}>
+                            <Zap className="h-2.5 w-2.5" />
+                            {manager.efficiency.efficiency.toFixed(1)}%
+                          </div>
+                          <div className={`p-1 rounded-full transition-all duration-300 ${isExpanded ? 'bg-purple-600 text-white rotate-180' : 'bg-indigo-50 text-indigo-600 opacity-60'}`}>
+                            <ChevronRight className="h-3 w-3 rotate-90" />
+                          </div>
                         </div>
                       </button>
 
@@ -220,29 +278,132 @@ export function AdminDashboard() {
                           >
                             {manager.assignedProjects.length > 0 ? (
                               manager.assignedProjects.map((project: any) => {
-                                const isProjectExpanded = selectedProject?.id === project.id;
+                                const isProjectExpanded = selectedProject?.name === project.name;
+                                const projEff = calcProjectEfficiency(project, liveTasks);
+
+                                // Collect team members: from project.teamMembers[] + unique task assignees
+                                const memberNamesFromProject: string[] = (project.teamMembers || []).map((tm: any) => tm.name);
+                                const memberNamesFromTasks: string[] = liveTasks
+                                  .filter((t: any) => (t.project || "").toLowerCase() === (project.name || "").toLowerCase() && t.assignee)
+                                  .map((t: any) => t.assignee);
+                                const allMemberNames = Array.from(new Set([...memberNamesFromProject, ...memberNamesFromTasks]));
+
                                 return (
-                                  <div key={project.id} className="rounded-xl border border-purple-200/50 bg-white shadow-sm overflow-hidden">
+                                  <div key={project.id || project.name} className="rounded-xl border border-purple-200/50 bg-white shadow-sm overflow-hidden">
+                                    {/* ── Project Header Row ── */}
                                     <button
                                       onClick={() => setSelectedProject(isProjectExpanded ? null : project)}
                                       className={`w-full text-left p-3 flex flex-col gap-1 hover:bg-purple-50/50 transition-colors ${isProjectExpanded ? 'bg-purple-50/80 border-b border-purple-100' : ''}`}
                                     >
                                       <div className="flex items-center justify-between">
                                         <h5 className="text-[12px] font-black tracking-tight text-purple-900">{project.name}</h5>
-                                        <ChevronRight className={`h-3 w-3 transition-transform ${isProjectExpanded ? 'rotate-90 text-purple-600' : 'text-muted-foreground'}`} />
+                                        <div className="flex items-center gap-2">
+                                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                                            projEff.statusColor === 'emerald'
+                                              ? 'bg-emerald-100 text-emerald-700'
+                                              : projEff.statusColor === 'amber'
+                                              ? 'bg-amber-100 text-amber-700'
+                                              : 'bg-rose-100 text-rose-700'
+                                          }`}>
+                                            <Zap className="h-2 w-2" />{projEff.efficiency.toFixed(1)}% · {projEff.status}
+                                          </span>
+                                          <ChevronRight className={`h-3 w-3 transition-transform ${isProjectExpanded ? 'rotate-90 text-purple-600' : 'text-muted-foreground'}`} />
+                                        </div>
                                       </div>
                                       <div className="flex items-center gap-3">
                                         <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
                                           <Calendar className="h-2.5 w-2.5" /> {project.deadline || "No deadline"}
                                         </span>
                                         <span className="text-[9px] font-bold text-muted-foreground/60 flex items-center gap-1">
-                                          <BarChart3 className="h-2.5 w-2.5" /> {project.progress || 0}% Done
+                                          <BarChart3 className="h-2.5 w-2.5" /> Actual {projEff.actualProgress.toFixed(1)}% / Expected {projEff.expectedProgress.toFixed(1)}%
                                         </span>
                                         <Badge className={`text-[7px] font-black border-none px-1.5 h-3.5 ${
                                           project.status === "Active" ? "bg-emerald-500/10 text-emerald-600" : "bg-amber-500/10 text-amber-600"
                                         }`}>{project.status || "Pending"}</Badge>
                                       </div>
                                     </button>
+
+                                    {/* ── Expanded: Manager Efficiency + Team Members ── */}
+                                    <AnimatePresence>
+                                      {isProjectExpanded && (
+                                        <motion.div
+                                          initial={{ height: 0, opacity: 0 }}
+                                          animate={{ height: "auto", opacity: 1 }}
+                                          exit={{ height: 0, opacity: 0 }}
+                                          className="overflow-hidden"
+                                        >
+                                          <div className="p-3 pt-2 space-y-3 bg-purple-50/40">
+
+                                            {/* Manager Efficiency Card */}
+                                            <div className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-purple-100 shadow-sm">
+                                              <div className="flex items-center gap-2">
+                                                <Avatar className="h-6 w-6 ring-1 ring-purple-200 shrink-0">
+                                                  <AvatarFallback className="text-[8px] font-black bg-purple-100 text-purple-700">
+                                                    {(manager.name || "").split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0,2)}
+                                                  </AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                  <p className="text-[10px] font-black text-purple-900 leading-none">{manager.name}</p>
+                                                  <p className="text-[8px] font-bold text-purple-400 uppercase tracking-widest mt-0.5">Manager Efficiency</p>
+                                                </div>
+                                              </div>
+                                              <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black ${
+                                                manager.efficiency.statusColor === 'emerald' ? 'bg-emerald-100 text-emerald-700' :
+                                                manager.efficiency.statusColor === 'amber'   ? 'bg-amber-100 text-amber-700'   :
+                                                'bg-rose-100 text-rose-700'
+                                              }`}>
+                                                <Zap className="h-2.5 w-2.5" />
+                                                {manager.efficiency.efficiency.toFixed(1)}% · {manager.efficiency.status}
+                                              </div>
+                                            </div>
+
+                                            {/* Team Members Efficiency */}
+                                            {allMemberNames.length > 0 ? (
+                                              <div className="space-y-1.5">
+                                                <p className="text-[8px] font-black uppercase tracking-widest text-purple-400 ml-1 flex items-center gap-1">
+                                                  <Users className="h-2.5 w-2.5" /> Team Members ({allMemberNames.length})
+                                                </p>
+                                                {allMemberNames.map((memberName: string) => {
+                                                  const membEff = calcMemberEfficiency(memberName, liveTasks);
+                                                  return (
+                                                    <div key={memberName} className="flex items-center justify-between p-2 bg-white rounded-lg border border-purple-100/60 shadow-sm">
+                                                      <div className="flex items-center gap-2">
+                                                        <Avatar className="h-5 w-5 ring-1 ring-indigo-100 shrink-0">
+                                                          <AvatarFallback className="text-[7px] font-black bg-indigo-50 text-indigo-600">
+                                                            {(memberName || "").split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0,2)}
+                                                          </AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                          <p className="text-[10px] font-black text-slate-800 leading-none">{memberName}</p>
+                                                          <p className="text-[8px] font-bold text-slate-400 mt-0.5">
+                                                            {membEff.completedTasks}/{membEff.assignedTasks} tasks
+                                                            {membEff.overdueTasks > 0 && (
+                                                              <span className="text-rose-500 ml-1">· {membEff.overdueTasks} overdue</span>
+                                                            )}
+                                                          </p>
+                                                        </div>
+                                                      </div>
+                                                      <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-black ${
+                                                        membEff.statusColor === 'emerald' ? 'bg-emerald-100 text-emerald-700' :
+                                                        membEff.statusColor === 'amber'   ? 'bg-amber-100 text-amber-700'   :
+                                                        'bg-rose-100 text-rose-700'
+                                                      }`}>
+                                                        <Zap className="h-2 w-2" />
+                                                        {membEff.efficiency.toFixed(1)}%
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            ) : (
+                                              <div className="p-3 text-center bg-white rounded-xl border border-dashed border-purple-100">
+                                                <p className="text-[9px] font-black text-muted-foreground/40 uppercase">No team members assigned yet</p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
                                   </div>
                                 );
                               })
@@ -273,87 +434,203 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Manager Performance Chart (Old) */}
+        {/* Manager Performance Index — Live */}
         <Card className="lg:col-span-7 border-none shadow-md bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden">
           <CardHeader className="p-4 pb-0">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-bold">Manager Performance Index</CardTitle>
-                <CardDescription className="text-[10px]">Efficiency scores across assigned teams</CardDescription>
+                <CardDescription className="text-[10px]">Live efficiency scores based on real project timelines</CardDescription>
               </div>
               <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1 px-2" onClick={() => navigate("/performance")}>
                 Analytical View <ArrowUpRight className="h-3 w-3" />
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-4 pt-4">
-            {performanceData.length > 0 ? (
-              <div className="h-[200px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground)/0.1)" />
-                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={9} tickLine={false} axisLine={false} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={9} tickLine={false} axisLine={false} />
-                    <Tooltip cursor={{fill: 'rgba(99, 102, 241, 0.05)'}} />
-                    <Bar dataKey="score" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={30} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+          <CardContent className="p-4 pt-4 space-y-4">
+            {managerPerformanceData.length > 0 ? (
+              <>
+                {/* Bar Chart */}
+                <div className="h-[180px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={managerPerformanceData} barSize={36}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground)/0.1)" />
+                      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={9} tickLine={false} axisLine={false} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={9} tickLine={false} axisLine={false} domain={[0, Math.max(120, ...managerPerformanceData.map(d => d.score + 10))]} />
+                      <Tooltip
+                        cursor={{ fill: 'rgba(99,102,241,0.05)' }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const d = payload[0].payload;
+                            return (
+                              <div className="bg-white shadow-xl rounded-xl border border-border/20 p-2.5 text-xs">
+                                <p className="font-black text-slate-800">{d.fullName}</p>
+                                <p className="font-bold text-slate-500">{d.projectCount} project{d.projectCount !== 1 ? 's' : ''}</p>
+                                <p className={`font-black mt-1 ${
+                                  d.statusColor === 'emerald' ? 'text-emerald-600' :
+                                  d.statusColor === 'amber' ? 'text-amber-600' : 'text-rose-600'
+                                }`}>{d.score}% — {d.status}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar dataKey="score" radius={[6, 6, 0, 0]}>
+                        {managerPerformanceData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Ranked Manager List below chart */}
+                <div className="space-y-1.5 pt-1 border-t border-border/20">
+                  {[...managerPerformanceData]
+                    .sort((a, b) => b.score - a.score)
+                    .map((m, i) => (
+                      <div key={m.fullName} className="flex items-center justify-between px-2 py-1.5 rounded-xl hover:bg-secondary/10 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center ${
+                            i === 0 ? 'bg-amber-400 text-white' :
+                            i === 1 ? 'bg-slate-400 text-white' :
+                            i === 2 ? 'bg-amber-700 text-white' : 'bg-slate-100 text-slate-400'
+                          }`}>{i + 1}</span>
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback className="text-[7px] font-black bg-indigo-50 text-indigo-600">
+                              {(m.fullName || "").split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0,2)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-[10px] font-black text-slate-800 leading-none">{m.fullName}</p>
+                            <p className="text-[8px] font-bold text-slate-400">{m.projectCount} project{m.projectCount !== 1 ? 's' : ''}</p>
+                          </div>
+                        </div>
+                        <div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black ${
+                          m.statusColor === 'emerald' ? 'bg-emerald-100 text-emerald-700' :
+                          m.statusColor === 'amber'   ? 'bg-amber-100 text-amber-700'   :
+                          'bg-rose-100 text-rose-700'
+                        }`}>
+                          <Zap className="h-2.5 w-2.5" />
+                          {m.score}%
+                          <span className="ml-0.5 opacity-70">· {m.status}</span>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </div>
+              </>
             ) : (
               <div className="h-[200px] flex items-center justify-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                <p className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-widest">Awaiting performance data</p>
+                <p className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-widest">No managers yet — add managers to view performance</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Project Status Distribution */}
+        {/* Project Status Distribution — Live */}
         <Card className="lg:col-span-5 border-none shadow-md bg-card/50 backdrop-blur-sm rounded-2xl">
           <CardHeader className="p-4 pb-0">
              <CardTitle className="text-base font-bold flex items-center gap-2">
                 <PieChart className="h-4 w-4 text-indigo-500" /> Status Distribution
              </CardTitle>
-             <CardDescription className="text-[10px]">Current project distribution</CardDescription>
+             <CardDescription className="text-[10px]">Live project status breakdown</CardDescription>
           </CardHeader>
-          <CardContent className="p-4 pt-2 flex flex-col items-center justify-center">
-             {statusDistribution.length > 0 ? (
+          <CardContent className="p-4 pt-2 flex flex-col">
+             {liveStatusDistribution.length > 0 ? (
                <>
-                 <div className="h-[150px] w-full">
+                 {/* Pie chart */}
+                 <div className="h-[130px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                        <RechartsPieChart>
                           <Pie
-                            data={statusDistribution}
+                            data={liveStatusDistribution}
                             cx="50%"
                             cy="50%"
-                            innerRadius={45}
-                            outerRadius={65}
+                            innerRadius={38}
+                            outerRadius={58}
                             paddingAngle={5}
                             dataKey="value"
                           >
-                             {statusDistribution.map((entry, index) => (
+                             {liveStatusDistribution.map((entry, index) => (
                                <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                              ))}
                           </Pie>
-                          <Tooltip />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const d = payload[0].payload;
+                                return (
+                                  <div className="bg-white shadow-xl rounded-xl border border-border/20 p-2 text-xs">
+                                    <p className="font-black" style={{ color: d.color }}>{d.name}</p>
+                                    <p className="font-bold text-slate-500">{d.value} project{d.value !== 1 ? 's' : ''}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
                        </RechartsPieChart>
                     </ResponsiveContainer>
                  </div>
-                 <div className="grid grid-cols-3 gap-4 mt-2 w-full">
-                    {statusDistribution.map(item => (
-                      <div key={item.name} className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform" onClick={() => navigate("/monitoring")}>
-                         <span className="text-[9px] font-bold text-muted-foreground uppercase">{item.name}</span>
-                         <span className="text-lg font-black" style={{ color: item.color }}>{item.value}</span>
-                      </div>
-                    ))}
+
+                 {/* Per-status project list */}
+                 <div className="mt-3 space-y-3 w-full max-h-[220px] overflow-y-auto pr-1">
+                    {[
+                      { label: "Active",    color: "#10b981", statuses: ["Active"] },
+                      { label: "Completed", color: "#6366f1", statuses: ["Completed", "Finalized"] },
+                      { label: "Delayed",   color: "#f43f5e", statuses: ["Delayed", "Overdue"] },
+                      { label: "Pending",   color: "#f59e0b", statuses: [] }, // catch-all
+                    ].map(group => {
+                      const groupProjects = liveProjects.filter(p => {
+                        if (group.statuses.length === 0) {
+                          return !p.status || (!["Active","Completed","Finalized","Delayed","Overdue"].includes(p.status));
+                        }
+                        return group.statuses.includes(p.status);
+                      });
+                      if (groupProjects.length === 0) return null;
+                      return (
+                        <div key={group.label}>
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">{group.label}</span>
+                            <span className="text-[9px] font-black ml-auto" style={{ color: group.color }}>{groupProjects.length}</span>
+                          </div>
+                          <div className="space-y-1 pl-3.5">
+                            {groupProjects.map((proj: any) => (
+                              <div
+                                key={proj.name}
+                                className="flex items-center justify-between px-2.5 py-1.5 bg-white rounded-lg border border-border/30 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                onClick={() => navigate("/monitoring")}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <FolderKanban className="h-3 w-3 shrink-0" style={{ color: group.color }} />
+                                  <span className="text-[10px] font-bold text-slate-800 truncate max-w-[120px]">{proj.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  {proj.manager && (
+                                    <span className="text-[8px] font-bold text-slate-400">{(proj.manager || "").split(" ")[0]}</span>
+                                  )}
+                                  <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: group.color }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                  </div>
                </>
              ) : (
-               <div className="h-[180px] w-full flex items-center justify-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                  <p className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-widest">No Active Distributions</p>
+               <div className="h-[180px] w-full flex flex-col items-center justify-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200 gap-2">
+                  <FolderKanban className="h-6 w-6 text-muted-foreground/20" />
+                  <p className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-widest">No Projects Yet</p>
                </div>
              )}
           </CardContent>
         </Card>
+
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6">
