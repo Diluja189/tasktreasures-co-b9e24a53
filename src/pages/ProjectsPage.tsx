@@ -159,17 +159,6 @@ export default function ProjectsPage() {
               />
            </div>
            
-           <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 w-32 rounded-xl border-none bg-secondary/20 text-[10px] font-black uppercase tracking-widest">
-                 <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-none shadow-2xl p-1">
-                 <SelectItem value="All" className="text-[10px] font-bold">All Status</SelectItem>
-                 <SelectItem value="Active" className="text-[10px] font-bold">Active</SelectItem>
-                 <SelectItem value="Delayed" className="text-[10px] font-bold">Delayed</SelectItem>
-                 <SelectItem value="Completed" className="text-[10px] font-bold">Completed</SelectItem>
-              </SelectContent>
-           </Select>
 
            <Button variant="outline" size="sm" className="h-8 rounded-xl font-bold text-[10px] gap-2 border-none bg-secondary/10" onClick={() => toast.info("Syncing inventory...")}>
               <RefreshCcw className="h-3.5 w-3.5" /> Refresh

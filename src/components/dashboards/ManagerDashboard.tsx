@@ -444,7 +444,7 @@ export function ManagerDashboard() {
             {/* Alerts */}
             {[
               { title: "Critical Delays",  sub: "6 tasks overshot",         icon: TimerOff,    color: "text-rose-400",   bg: "bg-rose-400/10",   border: "border-rose-400/20"   },
-              { title: "Anomaly Detected", sub: "Michael Kim âˆ’35%",         icon: TrendingDown, color: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/20" },
+              { title: "Anomaly Detected", sub: "",         icon: TrendingDown, color: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/20" },
             ].map((alert, i) => (
               <motion.div
                 key={alert.title}

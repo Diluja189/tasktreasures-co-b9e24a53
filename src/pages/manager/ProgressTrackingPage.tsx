@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Filter, Search, RefreshCw, 
   AlertTriangle, CheckCircle2, 
@@ -28,6 +29,7 @@ const statusStyles = {
 };
 
 export default function ProgressTrackingPage() {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
   const [projectFilter, setProjectFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -182,7 +184,7 @@ export default function ProgressTrackingPage() {
                        </div>
                     </div>
 
-                    <Button variant="outline" className="w-full text-xs font-bold h-10 rounded-xl relative z-10 hover:bg-slate-50 transition-colors">
+                    <Button variant="outline" className="w-full text-xs font-bold h-10 rounded-xl relative z-10 hover:bg-slate-50 transition-colors" onClick={() => navigate("/manager/tasks")}>
                       View Project
                     </Button>
                  </div>

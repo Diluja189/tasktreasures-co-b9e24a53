@@ -39,7 +39,7 @@ const statusStyles = {
   "Delayed": "bg-rose-500/10 text-rose-600 border-none",
 };
 
-const TODAY = new Date("2026-04-17");
+const TODAY = new Date();
 
 export default function ManagerTasksPage() {
   const [searchQuery, setSearchQuery] = useState("");

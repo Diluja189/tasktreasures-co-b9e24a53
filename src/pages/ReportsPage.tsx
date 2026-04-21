@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { 
   Users, ChevronRight, Briefcase, FileText, ArrowLeft, 
   Calendar, CheckCircle2, TrendingUp, Award, BarChart3,
-  XCircle, Clock, Target, AlertTriangle
+  XCircle, Clock, Target, AlertTriangle, Send,
+  ShieldCheck, Zap, MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,8 @@ import { Progress } from "@/components/ui/progress";
 export default function ReportsPage() {
   const [managers, setManagers] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
+  const [statusReports, setStatusReports] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   
   const [selectedManager, setSelectedManager] = useState<any>(null);
   const [selectedProject, setSelectedProject] = useState<any>(null);
@@ -20,8 +23,12 @@ export default function ReportsPage() {
     const loadData = () => {
       const m = localStorage.getItem("app_managers_persistence");
       const p = localStorage.getItem("app_projects_persistence");
+      const r = localStorage.getItem("app_status_reports_persistence");
+      const t = localStorage.getItem("app_tasks_persistence");
       setManagers(m ? JSON.parse(m) : []);
       setProjects(p ? JSON.parse(p) : []);
+      setStatusReports(r ? JSON.parse(r) : []);
+      setTasks(t ? JSON.parse(t) : []);
     };
     loadData();
     window.addEventListener("storage", loadData);
@@ -130,9 +137,9 @@ export default function ReportsPage() {
                 </thead>
                 <tbody className="divide-y divide-border/20">
                   {managersWithCount.map((manager, idx) => (
-                    <tr 
-                      key={manager.id || idx} 
-                      className="hover:bg-secondary/10 transition-colors cursor-pointer group" 
+                    <tr
+                      key={manager.id || idx}
+                      className="hover:bg-secondary/10 transition-colors cursor-pointer group"
                       onClick={() => setSelectedManager(manager)}
                     >
                       <td className="py-4 px-5 flex items-center gap-4">
@@ -163,9 +170,130 @@ export default function ReportsPage() {
             </div>
           </Card>
         )}
+
+        {/* ── Manager Status Submissions ───────────────────────────────── */}
+        <div className="flex flex-col gap-1 pt-4">
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+              <Send className="h-3.5 w-3.5 text-white" />
+            </div>
+            <h2 className="text-base font-black tracking-tight text-foreground">Manager Status Submissions</h2>
+            <Badge className="bg-indigo-500/10 text-indigo-700 border-none text-[10px] font-black px-2 ml-1">
+              {statusReports.length}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">Reports submitted by managers from the Strategic Status Assessment panel.</p>
+        </div>
+
+        {statusReports.length === 0 ? (
+          <div className="py-14 flex flex-col items-center justify-center text-center bg-secondary/10 rounded-3xl border border-dashed border-secondary/30">
+            <FileText className="h-10 w-10 text-muted-foreground/30 mb-3" />
+            <h3 className="font-black text-sm text-foreground/60 uppercase tracking-widest">No Submissions Yet</h3>
+            <p className="text-xs text-muted-foreground mt-1">Managers can submit reports from the Status Reports page.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {statusReports.map((report: any, idx: number) => {
+              const reportTasks = tasks.filter(t => t.project === report.project);
+              const finalizedTasks = reportTasks.filter(t => t.status === "Completed");
+              const activeTasks = reportTasks.filter(t => t.status === "In Progress" || t.status === "Not Started");
+
+              return (
+              <Card key={report.id || idx} className="border border-border/40 shadow-sm rounded-2xl bg-white overflow-hidden">
+                <CardContent className="p-0">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 py-4 bg-indigo-600">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-white leading-tight">{report.project}</p>
+                        <p className="text-[10px] text-indigo-200/70 font-medium mt-0.5 flex items-center gap-1">
+                          <Clock className="h-2.5 w-2.5" /> {report.date}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className="bg-emerald-400/20 text-emerald-100 border border-emerald-300/30 text-[9px] font-black uppercase tracking-widest px-2 py-0.5">
+                      {report.state || "Verified"}
+                    </Badge>
+                  </div>
+                  {/* Task Stats */}
+                  <div className="grid grid-cols-3 divide-x divide-border/30 border-b border-border/30">
+                    {[
+                      { label: "Finalized",  value: report.stats?.completed  ?? 0, color: "text-emerald-600" },
+                      { label: "Active",     value: report.stats?.inProgress ?? 0, color: "text-indigo-600"  },
+                      { label: "Risk Delta", value: report.stats?.delayed    ?? 0, color: "text-rose-600"    },
+                    ].map(s => (
+                      <div key={s.label} className="flex flex-col items-center py-3 px-2">
+                        <p className={`text-lg font-black leading-none ${s.color}`}>{s.value}</p>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mt-1">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Notes */}
+                  <div className="px-5 py-4 space-y-3">
+                    {report.risks && (
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 flex items-center gap-1">
+                          <Zap className="h-2.5 w-2.5" /> Risks & Blockers
+                        </p>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed line-clamp-2">{report.risks}</p>
+                      </div>
+                    )}
+                    {report.managerNote && (
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500 flex items-center gap-1">
+                          <MessageSquare className="h-2.5 w-2.5" /> Executive Summary
+                        </p>
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed line-clamp-2">{report.managerNote}</p>
+                      </div>
+                    )}
+                    {!report.risks && !report.managerNote && (
+                      <p className="text-[10px] italic text-muted-foreground">No notes provided.</p>
+                    )}
+                  </div>
+                  {/* Task Details List */}
+                  <div className="px-5 py-4 border-t border-border/30 bg-slate-50/50 space-y-4">
+                    {activeTasks.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-2">Active Tasks</p>
+                        <div className="space-y-1.5">
+                          {activeTasks.map((t: any) => (
+                            <div key={t.id} className="text-xs font-medium text-slate-700 flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
+                              <span className="truncate">{t.name}</span>
+                              <span className="text-[9px] text-slate-400 font-bold shrink-0 ml-2">{t.assignee}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {finalizedTasks.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2 mt-3">Finalized Tasks</p>
+                        <div className="space-y-1.5">
+                          {finalizedTasks.map((t: any) => (
+                            <div key={t.id} className="text-xs font-medium flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm opacity-70">
+                              <span className="truncate line-through text-slate-400">{t.name}</span>
+                              <span className="text-[9px] text-slate-400 font-bold shrink-0 ml-2">{t.assignee}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {activeTasks.length === 0 && finalizedTasks.length === 0 && (
+                      <p className="text-[10px] italic text-muted-foreground">No task details available.</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )})}
+          </div>
+        )}
       </div>
     );
   }
+
 
   // ── Render Level 2: Manager's Projects ─────────────────────────────────
   if (selectedManager && !selectedProject) {

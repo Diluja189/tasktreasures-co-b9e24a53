@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   FileText, Send, Download, RefreshCw, 
   CheckCircle2, Clock, AlertTriangle, MessageSquare,
@@ -16,17 +16,77 @@ import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const reportableProjects = [];
-
 export default function StatusReportsPage() {
+  const [projectsData, setProjectsData] = useState<any[]>([]);
+  const [tasksData, setTasksData] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [managerNote, setManagerNote] = useState("");
   const [risks, setRisks] = useState("");
+  const [recentReports, setRecentReports] = useState<any[]>([]);
 
-  const projectData = reportableProjects.find(p => p.id === selectedProject);
+  useEffect(() => {
+    const loadAppData = () => {
+      const persistedProjects = localStorage.getItem("app_projects_persistence");
+      const persistedTasks = localStorage.getItem("app_tasks_persistence");
+      const persistedReports = localStorage.getItem("app_status_reports_persistence");
+      
+      const allProjects = persistedProjects ? JSON.parse(persistedProjects) : [];
+      const allTasks = persistedTasks ? JSON.parse(persistedTasks) : [];
+      const allReports = persistedReports ? JSON.parse(persistedReports) : [];
+      
+      setProjectsData(allProjects.filter((p: any) => p.manager && p.manager !== "Unassigned"));
+      setTasksData(allTasks);
+      setRecentReports(allReports);
+    };
+
+    loadAppData();
+    window.addEventListener("storage", loadAppData);
+    return () => window.removeEventListener("storage", loadAppData);
+  }, []);
+
+  const reportableProjects = useMemo(() => {
+    return projectsData.map(project => {
+      const projectTasks = tasksData.filter(t => t.project === project.name);
+      return {
+        id: project.id,
+        name: project.name,
+        completed: projectTasks.filter(t => t.status === "Completed").length,
+        inProgress: projectTasks.filter(t => t.status === "In Progress").length,
+        delayed: projectTasks.filter(t => {
+          const isOverdue = t.status !== "Completed" && t.deadline && new Date(t.deadline) < new Date();
+          return t.status === "Delayed" || isOverdue;
+        }).length
+      };
+    });
+  }, [projectsData, tasksData]);
+
+  const projectData = useMemo(() => 
+    reportableProjects.find(p => p.id === selectedProject)
+  , [reportableProjects, selectedProject]);
 
   const handleSubmitReport = () => {
-    if (!selectedProject) return toast.error("Please select a target project for the report.");
+    if (!selectedProject || !projectData) return toast.error("Please select a target project for the report.");
+    
+    const newReport = {
+      id: `REP-${Math.floor(1000 + Math.random() * 9000)}`,
+      project: projectData.name,
+      projectId: selectedProject,
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      state: "Verified",
+      risks,
+      managerNote,
+      stats: {
+        completed: projectData.completed,
+        inProgress: projectData.inProgress,
+        delayed: projectData.delayed
+      }
+    };
+
+    const updatedReports = [newReport, ...recentReports].slice(0, 5);
+    setRecentReports(updatedReports);
+    localStorage.setItem("app_status_reports_persistence", JSON.stringify(updatedReports));
+    window.dispatchEvent(new Event("storage"));
+
     toast.success("Strategic Status Assessment submitted to Admin Layer.");
     setManagerNote("");
     setRisks("");
@@ -173,8 +233,8 @@ export default function StatusReportsPage() {
                  <ArrowUpRight className="h-4 w-4 text-slate-300" />
               </CardHeader>
               <CardContent className="p-0">
-                 <div className="divide-y divide-border/40">
-                    {[].map((h, i) => (
+                  <div className="divide-y divide-border/40">
+                    {recentReports.map((h, i) => (
                       <div key={i} className="p-6 hover:bg-slate-50 transition-colors group cursor-pointer">
                          <div className="flex justify-between items-center mb-2">
                             <p className="font-bold text-sm text-slate-800 group-hover:text-indigo-600 transition-colors">{h.project}</p>
@@ -185,6 +245,11 @@ export default function StatusReportsPage() {
                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter flex items-center gap-2"><Clock className="h-3 w-3" /> {h.date}</p>
                       </div>
                     ))}
+                    {recentReports.length === 0 && (
+                      <div className="p-10 text-center">
+                        <p className="text-xs font-bold text-slate-300 uppercase tracking-widest leading-relaxed">No reports submitted in the current cycle</p>
+                      </div>
+                    )}
                  </div>
                  <Button variant="ghost" className="w-full h-12 rounded-none text-[9px] font-bold uppercase tracking-widest bg-slate-50/50 hover:bg-slate-100 text-slate-500 gap-2 border-t border-border/40">
                     View Intelligence Vault <ChevronRight className="h-3 w-3" />
